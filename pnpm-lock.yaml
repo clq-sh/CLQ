@@ -26,7 +26,11 @@ importers:
 
   packages/cli: {}
 
-  packages/core: {}
+  packages/core:
+    devDependencies:
+      expect-type:
+        specifier: ^1.1.0
+        version: 1.3.0
 
   packages/testing: {}
 
