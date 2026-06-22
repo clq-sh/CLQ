@@ -1,0 +1,19 @@
+{
+  "name": "colloquial",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "test": "vitest run",
+    "lint": "biome check .",
+    "typecheck": "pnpm -r exec tsc --noEmit"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.8",
+    "@types/node": "^20",
+    "tsup": "^8",
+    "typescript": "^5.5",
+    "vitest": "^2"
+  }
+}
