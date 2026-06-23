@@ -9,3 +9,4 @@ export {
 } from "./protocol/translate.js"
 export { createMCPStdioDriver } from "./protocol/mcp-stdio-driver.js"
 export { createServer } from "./server.js"
+export { defineConfig, loadConfig } from "./config.js"

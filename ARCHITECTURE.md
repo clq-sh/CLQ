@@ -62,3 +62,12 @@ A standalone fixture (`protocol/test-fixtures/stdio-server.ts`, built by tsup to
 - `.start(options)` resolves the driver (`'auto'` / unset → `'mcp'`; anything else → `DRIVER_UNKNOWN`), constructs the Stage 5 stdio driver from the server's `name`/`version`, starts it with the registered tools, and returns the driver so callers (e.g. tests) can `.stop()` it.
 
 **`.use()` exists but does nothing yet.** Middleware *execution* (running `before`/`after` hooks around tool calls) is **Phase 3 scope**. This stage deliberately only reserves the API surface: registering middleware is accepted and stored so the method signature is final now and never has to change shape when execution is added later. Reserving the seam early is what keeps adding behavior additive rather than breaking.
+
+## Stage 7 — Config System
+
+The config system splits *declaration* from *loading*, because the two happen at different times:
+
+- `defineConfig(config)` is a **typed declaration only** — a runtime identity function whose value is full TypeScript checking of the config shape (`name`, `version`, and an `env` map of `EnvVarDeclaration`s). It runs at module-import time, when `process.env` is not yet meaningful, so it deliberately reads nothing from the environment.
+- `loadConfig(config)` does the **actual reading of `process.env`**, and is called at **server-start time**. For each declared var it coerces the raw string to the declared `type` (`number` via `Number`, `boolean` via `"true"`/`"1"`), applies a `default` when the var is absent, and throws `CONFIG_MISSING_ENV_VAR` when a required var is missing or a number fails to parse.
+
+Keeping loading separate from definition means a config file can be imported anywhere (for its types and metadata) without side effects, while env access is confined to the single, explicit moment the server boots.
