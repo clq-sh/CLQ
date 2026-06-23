@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { cac } from "cac"
+import { registerInitCommand } from "./commands/init.js"
 
 // Fail loudly and cleanly — never let a raw stack trace reach the user.
 process.on("uncaughtException", (err) => {
@@ -23,6 +24,8 @@ const pkg = JSON.parse(
 const cli = cac("clq")
 cli.version(pkg.version)
 cli.help()
+
+registerInitCommand(cli)
 
 cli.on("command:*", () => {
   console.error("Unknown command. Run `clq --help` to see available commands.")

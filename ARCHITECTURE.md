@@ -95,3 +95,17 @@ Phase 1 is the **foundation Phase 2 (CLI) builds on without modifying any of it.
 
 - **Injection prevention** — `execSafe(command, args)` keeps the command and its arguments as strictly separate values (`string`, `string[]`); it never builds a shell string and never passes `shell: true`. There is no place where user-influenced input can be concatenated into a command line and reinterpreted by a shell, so shell-injection is structurally impossible, not merely avoided by careful escaping. The signature is deliberately `(string, string[])` with no `string | string[]` union, so "just pass a whole command string" is not even expressible.
 - **Cross-platform correctness** — it delegates to `execa` rather than raw `child_process`, which handles Windows/POSIX path, quoting, and PATH-resolution differences uniformly. One audited wrapper means one place to reason about safety and portability for the entire CLI.
+
+## Phase 2, Stage 1 — clq init
+
+`clq init [project-name]` scaffolds a new project by copying the bundled `templates/default` directory, substituting a single `{{projectName}}` placeholder by **plain string replacement** (`String.prototype.replaceAll`) — never a template engine that evaluates expressions, so template content can never execute code. If no name is given it is prompted for via `@clack/prompts`.
+
+**Path safety is three independent checks, applied in order, any one of which aborts before a single byte is written:**
+
+1. **Validate the slug** — `validateProjectName` requires `^[a-z0-9][a-z0-9-]*$`: letters, numbers, hyphens only, starting alphanumeric. A name like `../../escape` fails here immediately because it contains neither — `.` and `/` are not in the allowed set.
+2. **Resolve** — `resolveSafeTargetPath` computes `path.resolve(process.cwd(), name)`, normalizing any `.`/`..` segments to a concrete absolute path.
+3. **Verify containment** — the resolved path must be `cwd` itself or start with `cwd + path.sep`. Anything that resolved to a sibling or ancestor throws `Refusing to write outside the current directory` and the command exits non-zero.
+
+Checks 1 and 3 are deliberately redundant: the slug rule already makes traversal unexpressible, but the post-resolve containment check is defense-in-depth — if the validation regex were ever loosened, the resolve-then-verify guard still refuses to write outside `cwd`. Only after all three pass (and an existing non-empty directory is either absent or explicitly `--force`d) does any `mkdir`/write happen. The copy walker preserves directory structure and never alters permission bits (no `chmod`).
+
+Templates are **data, not code**: they live under `src/templates/` (excluded from the package `tsconfig` and from biome, since the template's own `src/index.ts` imports `zod` which the CLI itself does not depend on), and tsup mirrors them into `dist/templates/` on build via an `onSuccess` copy so the published binary can find them at runtime.
