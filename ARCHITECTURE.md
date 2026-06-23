@@ -9,3 +9,14 @@
 - **ColloquialDriverStartConfig** — exists to define the payload a driver receives at startup, carrying the tool set plus arbitrary transport-specific extras.
 - **ColloquialServerConfig** — exists to carry identifying metadata (name + version) for a running server instance.
 - **ColloquialMiddleware** — exists to provide named before/after hooks for cross-cutting concerns around tool execution.
+
+## Stage 2 — Error System
+
+Every framework failure is a `ColloquialError` built around a four-field contract that makes errors actionable rather than opaque:
+
+- **code** — a stable, machine-matchable identifier (`/^[A-Z_]+$/`) so callers can branch on error kind without string-matching prose.
+- **message** — a one-sentence, human-readable statement of what went wrong.
+- **cause** — an optional explanation of *why* it happened (e.g. formatted Zod issues), never a raw stack trace.
+- **fix** — an optional concrete, actionable next step the developer can take to resolve it.
+
+`ColloquialErrorImpl` is the throwable `Error` subclass implementing this contract (its `name` is always `'ColloquialError'`), and the `errors` factory catalog mints each well-known framework error so codes, causes, and fixes stay consistent at every call site.
