@@ -17,3 +17,16 @@ createServer() returns a chainable object. .tool() and .use() both return `this`
 Config validation never silently passes through invalid values. Wrong type or missing required var always throws before the server starts, never fails confusingly later mid-request.
 
 Public API surface is exactly three functions — createServer, defineTool, defineConfig — plus the core type contracts. Nothing else is re-exported from the package entry point. Internals (errors/ColloquialErrorImpl, the pure protocol functions, createMCPStdioDriver, loadConfig) stay reachable in-package by direct import but are kept off the public surface so they can change without breaking consumers.
+
+- cac          → CLI argument parsing. Tiny, no bloat.
+- execa        → the ONLY sanctioned way anything in the CLI spawns a process.
+                 Never node:child_process directly elsewhere in the codebase.
+- @clack/prompts → interactive questions for `clq init`. Clean, modern, accessible.
+- tsx          → runs the user's TypeScript directly in `clq dev` via `tsx watch`.
+                 No separate build step needed for local development.
+- node:http    → the `clq inspect` backend. No Express, no framework — every line
+                 of the locally-exposed server is hand-written and auditable.
+- node:crypto  → session token generation for the inspector.
+- Hand-rolled regex patterns → secret scanning in `clq doctor`. Not a third-party
+                 library — CLQ owns the redaction guarantee end to end, not a
+                 dependency's behavior.
