@@ -52,3 +52,13 @@ The driver contains **no protocol meaning** — it does not build schemas, valid
 This is the key extensibility seam: **adding a second driver — REST, Web3, or any future protocol — means writing a new file that implements the same `ColloquialDriver` interface and calls the same pure functions. Nothing in `core` changes.** The `ColloquialDriver` contract from Stage 1 is what makes transports pluggable.
 
 A standalone fixture (`protocol/test-fixtures/stdio-server.ts`, built by tsup to `dist/test-fixtures/stdio-server.js`) defines two tools and starts the driver; the integration test spawns it as a real child process and drives it with newline-delimited JSON-RPC over stdio.
+
+## Stage 6 — createServer()
+
+`createServer(config)` is the developer-facing entry point: a small **chainable** object that collects tools and middleware, then hands them to a driver on `.start()`.
+
+- `.tool(def)` registers a `ColloquialToolDefinition`, rejecting a duplicate name with `TOOL_DUPLICATE_NAME`, and returns the api for chaining.
+- `.use(mw)` registers a `ColloquialMiddleware` and returns the api for chaining.
+- `.start(options)` resolves the driver (`'auto'` / unset → `'mcp'`; anything else → `DRIVER_UNKNOWN`), constructs the Stage 5 stdio driver from the server's `name`/`version`, starts it with the registered tools, and returns the driver so callers (e.g. tests) can `.stop()` it.
+
+**`.use()` exists but does nothing yet.** Middleware *execution* (running `before`/`after` hooks around tool calls) is **Phase 3 scope**. This stage deliberately only reserves the API surface: registering middleware is accepted and stored so the method signature is final now and never has to change shape when execution is added later. Reserving the seam early is what keeps adding behavior additive rather than breaking.

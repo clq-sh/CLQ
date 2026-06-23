@@ -11,3 +11,5 @@ Protocol translation never touches the network. Transports call into these pure 
 Drivers are the only place that touch real I/O. Protocol logic (Stage 4) stays pure and is reused by every driver.
 
 SDK note (Stage 5): @modelcontextprotocol/sdk@^1.29.0 exports matched the planned import paths exactly (`server/index.js` → `Server`, `server/stdio.js` → `StdioServerTransport`, `types.js` → `ListToolsRequestSchema`/`CallToolRequestSchema`), so no path adjustments were needed. One deviation from the draft: `crypto.randomUUID()` is not available as a global in a spawned ESM module on Node 18, so the driver imports `randomUUID` from `node:crypto` instead. The stdio test spawns the compiled fixture with plain `node` (built in `beforeAll`) rather than a `tsx` loader, because `tsx` is not a declared dependency and resolving it at runtime proved unreliable.
+
+createServer() returns a chainable object. .tool() and .use() both return `this`. Adding execution behavior to .use() later is additive — the signature is already final.

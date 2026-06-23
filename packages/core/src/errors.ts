@@ -85,4 +85,20 @@ export const errors = {
       fix: "Provide a valid authenticated token with the correct scope.",
     })
   },
+
+  duplicateTool(toolName: string): ColloquialErrorImpl {
+    return new ColloquialErrorImpl({
+      code: "TOOL_DUPLICATE_NAME",
+      message: `A tool named '${toolName}' is already registered on this server.`,
+      fix: "Use a unique name for each tool.",
+    })
+  },
+
+  unknownDriver(driverName: string): ColloquialErrorImpl {
+    return new ColloquialErrorImpl({
+      code: "DRIVER_UNKNOWN",
+      message: `Driver '${driverName}' is not recognized.`,
+      fix: "Use 'mcp' (the only available driver in this version) or 'auto'.",
+    })
+  },
 }
