@@ -24,6 +24,15 @@ importers:
         specifier: ^2
         version: 2.1.9(@types/node@20.19.43)
 
+  examples/weather-server:
+    dependencies:
+      '@clq-sh/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
+
   packages/cli: {}
 
   packages/core:

@@ -71,3 +71,19 @@ The config system splits *declaration* from *loading*, because the two happen at
 - `loadConfig(config)` does the **actual reading of `process.env`**, and is called at **server-start time**. For each declared var it coerces the raw string to the declared `type` (`number` via `Number`, `boolean` via `"true"`/`"1"`), applies a `default` when the var is absent, and throws `CONFIG_MISSING_ENV_VAR` when a required var is missing or a number fails to parse.
 
 Keeping loading separate from definition means a config file can be imported anywhere (for its types and metadata) without side effects, while env access is confined to the single, explicit moment the server boots.
+
+## Phase 1 — Complete
+
+**Exit condition met.** `examples/weather-server` is a complete, real MCP server built using *only* the public API — as an external developer with zero knowledge of CLQ internals would. Its integration test (`examples/weather-server/src/index.test.ts`) spawns the built server as a child process and drives it over real stdio JSON-RPC: it passes `initialize`, lists exactly the three tools with valid input schemas, calls each tool with correct results, and — critically — proves that one invalid call returns an `isError` response **without killing the process** (a second valid call immediately afterward still succeeds). This test is green.
+
+**Final public API surface** (`@clq-sh/core`):
+
+- `createServer(config)` — chainable server: `.tool()`, `.use()`, `.start()`.
+- `defineTool(config)` — Zod-typed tool with input/output validation at both boundaries.
+- `defineConfig(config)` / `loadConfig(config)` — typed config declaration and start-time env loading.
+- `createMCPStdioDriver(serverInfo)` — the stdio `ColloquialDriver`.
+- Pure protocol functions — `toolToMCPSchema`, `buildToolsList`, `dispatchToolCall` (+ `MCPCallResult`).
+- Error system — `ColloquialErrorImpl`, `errors` catalog.
+- Types — `ColloquialError`, `ColloquialContext`, `ColloquialToolDefinition`, `ColloquialDriver`, `ColloquialDriverStartConfig`, `ColloquialServerConfig`, `ColloquialMiddleware`.
+
+Phase 1 is the **foundation Phase 2 (CLI) builds on without modifying any of it.** The CLI will orchestrate and scaffold around this API surface; it does not change these contracts. The Stage 1 interfaces remain frozen — future stages add only optional fields, never breaking changes.

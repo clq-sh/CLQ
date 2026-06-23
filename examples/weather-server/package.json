@@ -1,0 +1,13 @@
+{
+  "name": "weather-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@clq-sh/core": "workspace:*",
+    "zod": "^3.23.8"
+  }
+}

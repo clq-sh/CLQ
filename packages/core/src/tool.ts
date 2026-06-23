@@ -1,4 +1,4 @@
-import type { infer as ZodInfer, ZodTypeAny } from "zod"
+import type { ZodTypeAny, z } from "zod"
 import { errors } from "./errors.js"
 import type { ColloquialContext, ColloquialToolDefinition } from "./types.js"
 
@@ -17,10 +17,10 @@ export function defineTool<
   requiresAuth?: boolean
   requiredScope?: string
   handler: (args: {
-    input: ZodInfer<TInputSchema>
+    input: z.infer<TInputSchema>
     ctx: ColloquialContext
   }) => Promise<
-    TOutputSchema extends ZodTypeAny ? ZodInfer<TOutputSchema> : unknown
+    TOutputSchema extends ZodTypeAny ? z.infer<TOutputSchema> : unknown
   >
 }): ColloquialToolDefinition {
   if (!config.description?.trim()) {
