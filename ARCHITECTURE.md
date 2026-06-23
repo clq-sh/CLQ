@@ -29,3 +29,13 @@ Every framework failure is a `ColloquialError` built around a four-field contrac
 - **Output boundary** — when an `output` schema is supplied, the handler's return value is `safeParse`d against it and a mismatch throws `TOOL_INVALID_OUTPUT`; with no `output` schema the return value passes through untouched. This guarantees the framework never emits a shape it promised but didn't produce.
 
 The **description is mandatory** and checked eagerly at `defineTool()` call time (not at invocation): an empty or whitespace-only description throws `TOOL_MISSING_DESCRIPTION` immediately. Description quality directly drives **Agentic Experience (AX)** — AI agents read tool descriptions to decide *when* to call a tool, so a missing or vague description causes agents to call tools incorrectly or not at all. Failing fast at definition time keeps a broken tool from ever reaching an agent.
+
+## Stage 4 — Protocol Translation
+
+The `protocol/translate.ts` layer is the **pure, transport-agnostic** boundary between CLQ's internal tool format and the MCP wire format. It contains only pure functions and `async` dispatch — no sockets, no process spawning, no SDK, no I/O — so every function is fully unit-testable in isolation:
+
+- `toolToMCPSchema` — converts one `ColloquialToolDefinition` into an MCP tool descriptor, using `zod-to-json-schema` to turn its Zod `input` into JSON Schema.
+- `buildToolsList` — maps a tool set into the MCP `tools/list` payload.
+- `dispatchToolCall` — resolves a tool by name and invokes its handler, translating the outcome into the `MCPCallResult` shape: success becomes a JSON text block; an unknown name or a thrown `ColloquialErrorImpl` becomes an `isError` text block; any *unexpected* error is rethrown rather than silently swallowed. It deliberately does **not** re-validate input/output — `defineTool()`'s wrapped handler already owns that, so validation lives in exactly one place.
+
+Because this layer never touches the network, the **same functions are reused unchanged** by the stdio transport (Stage 5), a future HTTP transport (Phase 3), and any other MCP transport. Transports own connections and framing; translation owns meaning.
