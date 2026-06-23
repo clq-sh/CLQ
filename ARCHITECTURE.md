@@ -39,3 +39,16 @@ The `protocol/translate.ts` layer is the **pure, transport-agnostic** boundary b
 - `dispatchToolCall` — resolves a tool by name and invokes its handler, translating the outcome into the `MCPCallResult` shape: success becomes a JSON text block; an unknown name or a thrown `ColloquialErrorImpl` becomes an `isError` text block; any *unexpected* error is rethrown rather than silently swallowed. It deliberately does **not** re-validate input/output — `defineTool()`'s wrapped handler already owns that, so validation lives in exactly one place.
 
 Because this layer never touches the network, the **same functions are reused unchanged** by the stdio transport (Stage 5), a future HTTP transport (Phase 3), and any other MCP transport. Transports own connections and framing; translation owns meaning.
+
+## Stage 5 — MCP Stdio Driver
+
+`createMCPStdioDriver()` is the **first concrete `ColloquialDriver`** (the interface defined in Stage 1). It wires the pure Stage 4 translation functions into a real MCP server from the official `@modelcontextprotocol/sdk`, served over stdio:
+
+- `start(config)` constructs an SDK `Server`, registers a `ListToolsRequestSchema` handler that returns `buildToolsList(config.tools)`, and a `CallToolRequestSchema` handler that mints a fresh `ColloquialContext` (per-request `requestId` + `timestamp`) and delegates to `dispatchToolCall`. It then connects a `StdioServerTransport`.
+- `stop()` closes the transport.
+
+The driver contains **no protocol meaning** — it does not build schemas, validate, or format errors. It only owns I/O (the SDK server, the stdio transport, request context creation). All meaning lives in the pure Stage 4 functions.
+
+This is the key extensibility seam: **adding a second driver — REST, Web3, or any future protocol — means writing a new file that implements the same `ColloquialDriver` interface and calls the same pure functions. Nothing in `core` changes.** The `ColloquialDriver` contract from Stage 1 is what makes transports pluggable.
+
+A standalone fixture (`protocol/test-fixtures/stdio-server.ts`, built by tsup to `dist/test-fixtures/stdio-server.js`) defines two tools and starts the driver; the integration test spawns it as a real child process and drives it with newline-delimited JSON-RPC over stdio.
