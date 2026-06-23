@@ -15,3 +15,5 @@ SDK note (Stage 5): @modelcontextprotocol/sdk@^1.29.0 exports matched the planne
 createServer() returns a chainable object. .tool() and .use() both return `this`. Adding execution behavior to .use() later is additive — the signature is already final.
 
 Config validation never silently passes through invalid values. Wrong type or missing required var always throws before the server starts, never fails confusingly later mid-request.
+
+Public API surface is exactly three functions — createServer, defineTool, defineConfig — plus the core type contracts. Nothing else is re-exported from the package entry point. Internals (errors/ColloquialErrorImpl, the pure protocol functions, createMCPStdioDriver, loadConfig) stay reachable in-package by direct import but are kept off the public surface so they can change without breaking consumers.
