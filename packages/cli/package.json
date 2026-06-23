@@ -2,24 +2,20 @@
   "name": "@clq-sh/cli",
   "version": "0.0.0",
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
-    }
+  "bin": {
+    "clq": "./dist/index.js"
   },
   "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "@clq-sh/core": "workspace:*",
+    "cac": "^6.7.14",
+    "execa": "^9.5.1"
+  },
+  "devDependencies": {
+    "expect-type": "^1.1.0"
   }
 }
