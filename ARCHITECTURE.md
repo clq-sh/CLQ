@@ -20,3 +20,12 @@ Every framework failure is a `ColloquialError` built around a four-field contrac
 - **fix** — an optional concrete, actionable next step the developer can take to resolve it.
 
 `ColloquialErrorImpl` is the throwable `Error` subclass implementing this contract (its `name` is always `'ColloquialError'`), and the `errors` factory catalog mints each well-known framework error so codes, causes, and fixes stay consistent at every call site.
+
+## Stage 3 — defineTool()
+
+`defineTool()` turns a Zod-typed config into a `ColloquialToolDefinition` with validation enforced at **both boundaries**:
+
+- **Input boundary** — every invocation `safeParse`s the raw input against the `input` schema before the real handler runs; a failure throws `TOOL_INVALID_INPUT` and the handler is never called, so handlers only ever see well-typed, validated data.
+- **Output boundary** — when an `output` schema is supplied, the handler's return value is `safeParse`d against it and a mismatch throws `TOOL_INVALID_OUTPUT`; with no `output` schema the return value passes through untouched. This guarantees the framework never emits a shape it promised but didn't produce.
+
+The **description is mandatory** and checked eagerly at `defineTool()` call time (not at invocation): an empty or whitespace-only description throws `TOOL_MISSING_DESCRIPTION` immediately. Description quality directly drives **Agentic Experience (AX)** — AI agents read tool descriptions to decide *when* to call a tool, so a missing or vague description causes agents to call tools incorrectly or not at all. Failing fast at definition time keeps a broken tool from ever reaching an agent.
