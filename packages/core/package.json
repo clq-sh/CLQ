@@ -15,6 +15,16 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./inspect": {
+      "import": {
+        "types": "./dist/inspect.d.ts",
+        "default": "./dist/inspect.js"
+      },
+      "require": {
+        "types": "./dist/inspect.d.cts",
+        "default": "./dist/inspect.cjs"
+      }
     }
   },
   "files": ["dist"],

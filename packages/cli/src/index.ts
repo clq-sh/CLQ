@@ -5,6 +5,7 @@ import { cac } from "cac"
 import { registerAddCommand } from "./commands/add.js"
 import { registerDevCommand } from "./commands/dev.js"
 import { registerInitCommand } from "./commands/init.js"
+import { registerInspectCommand } from "./commands/inspect.js"
 
 // Fail loudly and cleanly — never let a raw stack trace reach the user.
 process.on("uncaughtException", (err) => {
@@ -30,6 +31,7 @@ cli.help()
 registerInitCommand(cli)
 registerAddCommand(cli)
 registerDevCommand(cli)
+registerInspectCommand(cli)
 
 cli.on("command:*", () => {
   console.error("Unknown command. Run `clq --help` to see available commands.")
