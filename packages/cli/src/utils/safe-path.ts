@@ -1,14 +1,17 @@
 import path from "node:path"
 
-/** Validate a project name slug: letters, numbers, hyphens only, must start alphanumeric. */
-export function validateProjectName(name: string): {
+/**
+ * Validate a slug — used for both project names and tool names: letters, numbers,
+ * and hyphens only, must start with an alphanumeric character.
+ */
+export function validateSlug(name: string): {
   valid: boolean
   reason?: string
 } {
   if (!/^[a-z0-9][a-z0-9-]*$/i.test(name)) {
     return {
       valid: false,
-      reason: "Project name must contain only letters, numbers, and hyphens.",
+      reason: "Name must contain only letters, numbers, and hyphens.",
     }
   }
   return { valid: true }

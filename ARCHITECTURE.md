@@ -102,10 +102,19 @@ Phase 1 is the **foundation Phase 2 (CLI) builds on without modifying any of it.
 
 **Path safety is three independent checks, applied in order, any one of which aborts before a single byte is written:**
 
-1. **Validate the slug** — `validateProjectName` requires `^[a-z0-9][a-z0-9-]*$`: letters, numbers, hyphens only, starting alphanumeric. A name like `../../escape` fails here immediately because it contains neither — `.` and `/` are not in the allowed set.
+1. **Validate the slug** — `validateSlug` requires `^[a-z0-9][a-z0-9-]*$`: letters, numbers, hyphens only, starting alphanumeric. A name like `../../escape` fails here immediately because it contains neither — `.` and `/` are not in the allowed set.
 2. **Resolve** — `resolveSafeTargetPath` computes `path.resolve(process.cwd(), name)`, normalizing any `.`/`..` segments to a concrete absolute path.
 3. **Verify containment** — the resolved path must be `cwd` itself or start with `cwd + path.sep`. Anything that resolved to a sibling or ancestor throws `Refusing to write outside the current directory` and the command exits non-zero.
 
 Checks 1 and 3 are deliberately redundant: the slug rule already makes traversal unexpressible, but the post-resolve containment check is defense-in-depth — if the validation regex were ever loosened, the resolve-then-verify guard still refuses to write outside `cwd`. Only after all three pass (and an existing non-empty directory is either absent or explicitly `--force`d) does any `mkdir`/write happen. The copy walker preserves directory structure and never alters permission bits (no `chmod`).
+
+## Phase 2, Stage 2 — clq add
+
+`clq add <tool-name>` generates a new tool file from `templates/tool.ts.template` into the current project's `src/tools/`, substituting `{{toolName}}` by the same plain-string replacement as `init`. The generated skeleton ships with a **real, non-empty description sentence** (`"TODO: describe what <name> does and when an agent should call it."`), so the file satisfies Phase 1's mandatory-description check the instant it's created — the project builds before the developer has written a word.
+
+Two pieces of shared infrastructure make this stage small:
+
+- **Shared slug validator** — the validator that `init` used for project names was renamed `validateProjectName` → `validateSlug` and is now used by **both** `init` and `add`. Project names and tool names obey the same rule (`^[a-z0-9][a-z0-9-]*$`), so a tool name like `../evil` is rejected before any path work — and, as in Stage 1, a post-join containment check confirms the target resolves strictly inside `src/tools/` as defense-in-depth.
+- **Project-root detection** — `findProjectRoot` walks up from `process.cwd()` looking for `colloquial.config.ts` as the project marker, so `clq add` works from anywhere inside a project (e.g. a deeply nested subdirectory), not just its root. The walk is **bounded to 10 levels** and stops at the filesystem root, so a stray invocation outside any project fails fast with a clear message rather than scanning the whole disk. No marker found → no write, non-zero exit.
 
 Templates are **data, not code**: they live under `src/templates/` (excluded from the package `tsconfig` and from biome, since the template's own `src/index.ts` imports `zod` which the CLI itself does not depend on), and tsup mirrors them into `dist/templates/` on build via an `onSuccess` copy so the published binary can find them at runtime.

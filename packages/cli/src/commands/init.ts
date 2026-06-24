@@ -3,10 +3,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import type { CAC } from "cac"
 import { copyTemplateDir } from "../utils/copy-template.js"
-import {
-  resolveSafeTargetPath,
-  validateProjectName,
-} from "../utils/safe-path.js"
+import { resolveSafeTargetPath, validateSlug } from "../utils/safe-path.js"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
@@ -46,7 +43,7 @@ export function registerInitCommand(cli: CAC): void {
           name = answer
         }
 
-        const validation = validateProjectName(name)
+        const validation = validateSlug(name)
         if (!validation.valid) {
           console.error(validation.reason)
           process.exitCode = 1

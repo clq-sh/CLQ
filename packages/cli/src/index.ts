@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { cac } from "cac"
+import { registerAddCommand } from "./commands/add.js"
 import { registerInitCommand } from "./commands/init.js"
 
 // Fail loudly and cleanly — never let a raw stack trace reach the user.
@@ -26,6 +27,7 @@ cli.version(pkg.version)
 cli.help()
 
 registerInitCommand(cli)
+registerAddCommand(cli)
 
 cli.on("command:*", () => {
   console.error("Unknown command. Run `clq --help` to see available commands.")

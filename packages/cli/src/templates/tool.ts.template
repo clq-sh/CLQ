@@ -1,0 +1,13 @@
+import { defineTool } from "@clq-sh/core"
+import { z } from "zod"
+
+export const {{toolName}} = defineTool({
+  name: "{{toolName}}",
+  description:
+    "TODO: describe what {{toolName}} does and when an agent should call it.",
+  input: z.object({}),
+  handler: async () => {
+    // TODO: implement {{toolName}}.
+    return {}
+  },
+})
