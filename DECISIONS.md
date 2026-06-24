@@ -30,3 +30,5 @@ Public API surface is exactly three functions — createServer, defineTool, defi
 - Hand-rolled regex patterns → secret scanning in `clq doctor`. Not a third-party
                  library — CLQ owns the redaction guarantee end to end, not a
                  dependency's behavior.
+
+clq dev delegates watching to `tsx watch` rather than implementing a file watcher. On shutdown the signal handler kills the tsx child and awaits its exit before the parent exits — the deliberate fix for orphaned dev processes. Platform note: a real console Ctrl+C runs this handler on every OS, but a *programmatic* kill('SIGINT') on Windows terminates the parent without running handlers, so the dev integration test additionally tree-sweeps by descendant pid and by command-line match in teardown to guarantee zero leaked processes; its core assertion is that the CLI exits within 3s of the signal.

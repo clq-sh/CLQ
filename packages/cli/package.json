@@ -14,7 +14,8 @@
     "@clack/prompts": "^0.7.0",
     "@clq-sh/core": "workspace:*",
     "cac": "^6.7.14",
-    "execa": "^9.5.1"
+    "execa": "^9.5.1",
+    "tsx": "^4.19.3"
   },
   "devDependencies": {
     "expect-type": "^1.1.0"

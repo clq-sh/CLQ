@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { cac } from "cac"
 import { registerAddCommand } from "./commands/add.js"
+import { registerDevCommand } from "./commands/dev.js"
 import { registerInitCommand } from "./commands/init.js"
 
 // Fail loudly and cleanly — never let a raw stack trace reach the user.
@@ -28,6 +29,7 @@ cli.help()
 
 registerInitCommand(cli)
 registerAddCommand(cli)
+registerDevCommand(cli)
 
 cli.on("command:*", () => {
   console.error("Unknown command. Run `clq --help` to see available commands.")
