@@ -146,6 +146,18 @@ describe("clq inspect backend (two-process, security)", () => {
     expect(typeof addr === "object" && addr?.address).toBe("127.0.0.1")
   }, 40_000)
 
+  test("GET / serves the static UI with no token and no Origin", async () => {
+    inspector = await startInspectServer({ root: projectDir })
+    // A top-level browser navigation: no Origin header, no token. Must still get the page.
+    const res = await fetch(`${origin(inspector.port)}/`)
+    expect(res.status).toBe(200)
+    expect(res.headers.get("content-type")).toContain("text/html")
+    const html = await res.text()
+    expect(html).toContain("CLQ Inspector")
+    // The static asset must never embed the token.
+    expect(html).not.toContain(inspector.token)
+  }, 40_000)
+
   test("forged Origin is rejected with 403 before any token logic", async () => {
     inspector = await startInspectServer({ root: projectDir })
     const res = await fetch(`${origin(inspector.port)}/api/tools`, {

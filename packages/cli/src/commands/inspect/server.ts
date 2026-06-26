@@ -1,4 +1,5 @@
 import crypto from "node:crypto"
+import { readFileSync } from "node:fs"
 import http from "node:http"
 import path from "node:path"
 import { dirname } from "node:path"
@@ -7,6 +8,19 @@ import { execSafe } from "../../utils/exec-safe.js"
 import { redactSecrets } from "../../utils/redact.js"
 
 const here = dirname(fileURLToPath(import.meta.url))
+
+// The inspector UI is a single static file. Both the bundled layout (dist/index.js →
+// dist/public) and the source layout (src/commands/inspect/server.ts →
+// src/commands/inspect/public) resolve to the same relative path. Read it once at
+// module load; it never changes during a run. If it is somehow missing we fall back
+// to a tiny message rather than crashing the server.
+const indexHtml: string = (() => {
+  try {
+    return readFileSync(path.join(here, "public", "index.html"), "utf8")
+  } catch {
+    return "<!doctype html><title>CLQ Inspector</title><p>Inspector UI asset not found.</p>"
+  }
+})()
 
 type ChildMessage =
   | { type: "tools"; tools: { name: string }[] }
@@ -190,20 +204,30 @@ export async function startInspectServer(opts: {
     res: http.ServerResponse,
   ): Promise<void> {
     const expectedOrigin = `http://127.0.0.1:${boundPort}`
+    const url = new URL(req.url ?? "/", expectedOrigin)
+
+    // Serve the static UI at GET / BEFORE any Origin/token gate. This adds NO new
+    // trust surface: the page is a constant asset that holds no token and no project
+    // data — anyone who can reach this loopback port could fetch it, and learn
+    // nothing. The gate must come after because a top-level browser navigation to
+    // `/?token=…` sends no Origin header and would otherwise be rejected at 403,
+    // before the user ever sees the page that supplies the token to the API. Every
+    // /api/* route below still enforces Origin + token — that is the real boundary.
+    if (req.method === "GET" && url.pathname === "/") {
+      res.writeHead(200, {
+        "content-type": "text/html; charset=utf-8",
+        // The page must never be cached cross-origin or persisted; it is loopback-only.
+        "cache-control": "no-store",
+      })
+      res.end(indexHtml)
+      return
+    }
 
     // SECURITY CHECK 1 — Origin, unconditionally, before anything else. A wrong-origin
     // request is rejected here and never reaches token validation, so it cannot even
     // learn whether a token would have been accepted.
     if (req.headers.origin !== expectedOrigin) {
       sendJson(res, 403, { error: "Forbidden: invalid origin." })
-      return
-    }
-
-    const url = new URL(req.url ?? "/", expectedOrigin)
-
-    // '/' would serve the token-bearing page; there is no frontend in this stage.
-    if (url.pathname === "/") {
-      sendJson(res, 404, { error: "Not found." })
       return
     }
 

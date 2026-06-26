@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CLQ Inspector</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171a21;
+        --border: #272b35;
+        --text: #e6e9ef;
+        --muted: #9aa3b2;
+        --accent: #6ea8fe;
+        --ok: #4ade80;
+        --err: #f87171;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      header {
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+      }
+      header h1 {
+        font-size: 16px;
+        margin: 0;
+      }
+      header .sub {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      h2 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin: 28px 0 12px;
+      }
+      .tool {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      .tool-name {
+        font-family: var(--mono);
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .tool-desc {
+        color: var(--muted);
+        margin: 4px 0 14px;
+      }
+      .field {
+        margin-bottom: 10px;
+      }
+      .field label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .field label .req {
+        color: var(--err);
+      }
+      .field label .type {
+        font-family: var(--mono);
+        font-size: 11px;
+        opacity: 0.7;
+      }
+      input[type="text"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        background: #0c0e13;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 8px 10px;
+        font: inherit;
+      }
+      textarea {
+        font-family: var(--mono);
+        font-size: 13px;
+        min-height: 70px;
+        resize: vertical;
+      }
+      input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        vertical-align: middle;
+      }
+      button {
+        background: var(--accent);
+        color: #0c0e13;
+        border: 0;
+        border-radius: 6px;
+        padding: 8px 16px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .result {
+        margin-top: 12px;
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+        display: none;
+      }
+      .result.show {
+        display: block;
+      }
+      .result .tag {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .result.ok .tag {
+        color: var(--ok);
+      }
+      .result.err .tag {
+        color: var(--err);
+      }
+      pre {
+        font-family: var(--mono);
+        font-size: 13px;
+        background: #0c0e13;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px;
+        margin: 6px 0 0;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .logs-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .log {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+      }
+      .log-meta {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .log-meta b {
+        color: var(--text);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>CLQ Inspector</h1>
+      <span class="sub" id="status">loading…</span>
+    </header>
+    <main>
+      <h2>Tools</h2>
+      <div id="tools"><p class="muted">Loading tools…</p></div>
+
+      <div class="logs-head">
+        <h2>Call log</h2>
+        <button id="refresh-logs" style="background: var(--border); color: var(--text)">
+          Refresh
+        </button>
+      </div>
+      <div id="logs"><p class="muted">No calls yet.</p></div>
+    </main>
+
+    <script>
+      // The token arrives once in the URL query string. Read it, then immediately
+      // scrub it from the visible address bar (history, bookmarks, screen-shares)
+      // while keeping it in memory for the lifetime of this page.
+      const token = new URLSearchParams(location.search).get("token")
+      history.replaceState(null, "", location.pathname)
+
+      // Every privileged request goes through here; it is the ONLY place the token
+      // is attached. The static page itself carries no secrets — the trust boundary
+      // is this header plus the server's Origin check.
+      function apiFetch(path, opts = {}) {
+        return fetch(path, {
+          ...opts,
+          headers: { ...opts.headers, "X-CLQ-Token": token },
+        })
+      }
+
+      const $ = (tag, props = {}, ...kids) => {
+        const el = Object.assign(document.createElement(tag), props)
+        for (const k of kids) el.append(k)
+        return el
+      }
+      const statusEl = document.getElementById("status")
+
+      // --- form generation ----------------------------------------------------
+      // Map a single JSON-schema property to an input. Scalars get a native input;
+      // anything structured (object/array/union/enum) falls back to a JSON textarea.
+      // Deliberately shallow — a richer generator is not worth it for a first cut.
+      function fieldFor(name, prop, required) {
+        const type = prop && prop.type
+        const label = $("label", {})
+        label.append(name)
+        if (required) label.append(" ", $("span", { className: "req", textContent: "*" }))
+        label.append(" ", $("span", { className: "type", textContent: schemaHint(prop) }))
+        if (prop && prop.description) {
+          label.append($("div", { className: "muted", textContent: prop.description }))
+        }
+
+        let input
+        let kind
+        if (type === "string") {
+          input = $("input", { type: "text" })
+          kind = "string"
+        } else if (type === "number" || type === "integer") {
+          input = $("input", { type: "number", step: type === "integer" ? "1" : "any" })
+          kind = "number"
+        } else if (type === "boolean") {
+          input = $("input", { type: "checkbox" })
+          kind = "boolean"
+        } else {
+          // object, array, enum, anyOf/oneOf, or unknown → raw JSON.
+          input = $("textarea", {
+            placeholder: "JSON value, e.g. " + jsonPlaceholder(prop),
+          })
+          kind = "json"
+        }
+        input.dataset.field = name
+        input.dataset.kind = kind
+
+        const wrap = $("div", { className: "field" })
+        if (kind === "boolean") {
+          // Checkbox reads better inline with its label.
+          const inline = $("label", {})
+          inline.append(input, " ", name)
+          if (required) inline.append(" ", $("span", { className: "req", textContent: "*" }))
+          wrap.append(inline)
+          if (prop && prop.description) {
+            wrap.append($("div", { className: "muted", textContent: prop.description }))
+          }
+        } else {
+          wrap.append(label, input)
+        }
+        return wrap
+      }
+
+      function schemaHint(prop) {
+        if (!prop) return ""
+        if (prop.enum) return "enum"
+        if (prop.anyOf || prop.oneOf) return "union"
+        return prop.type || "any"
+      }
+      function jsonPlaceholder(prop) {
+        if (prop && prop.type === "array") return "[]"
+        if (prop && prop.enum) return JSON.stringify(prop.enum[0])
+        return "{}"
+      }
+
+      // Collect form values into an args object, throwing on malformed JSON so the
+      // caller can surface a clean error instead of sending garbage to a tool.
+      function collectArgs(formEl) {
+        const args = {}
+        for (const input of formEl.querySelectorAll("[data-field]")) {
+          const name = input.dataset.field
+          const kind = input.dataset.kind
+          if (kind === "boolean") {
+            args[name] = input.checked
+          } else if (kind === "number") {
+            if (input.value === "") continue
+            args[name] = Number(input.value)
+          } else if (kind === "json") {
+            if (input.value.trim() === "") continue
+            try {
+              args[name] = JSON.parse(input.value)
+            } catch (e) {
+              throw new Error(`Field "${name}": invalid JSON — ${e.message}`)
+            }
+          } else {
+            if (input.value === "") continue
+            args[name] = input.value
+          }
+        }
+        return args
+      }
+
+      // --- tool rendering -----------------------------------------------------
+      function renderTool(tool) {
+        const card = $("div", { className: "tool" })
+        card.append($("div", { className: "tool-name", textContent: tool.name }))
+        if (tool.description) {
+          card.append($("div", { className: "tool-desc", textContent: tool.description }))
+        }
+
+        const schema = tool.inputSchema || {}
+        const props = schema.properties || {}
+        const required = new Set(schema.required || [])
+        const form = $("form")
+        const names = Object.keys(props)
+        if (names.length === 0) {
+          form.append($("p", { className: "muted", textContent: "No input parameters." }))
+        } else {
+          for (const name of names) {
+            form.append(fieldFor(name, props[name], required.has(name)))
+          }
+        }
+
+        const result = $("div", { className: "result" })
+        const runBtn = $("button", { type: "submit", textContent: "Run" })
+        form.append(runBtn)
+        card.append(form, result)
+
+        form.addEventListener("submit", async (ev) => {
+          ev.preventDefault()
+          let args
+          try {
+            args = collectArgs(form)
+          } catch (e) {
+            showResult(result, "err", "Bad input", e.message)
+            return
+          }
+          runBtn.disabled = true
+          runBtn.textContent = "Running…"
+          try {
+            const res = await apiFetch("/api/call", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ name: tool.name, args }),
+            })
+            const body = await res.json()
+            if (body.isError || body.error) {
+              showResult(result, "err", "Error", body.error ?? body)
+            } else {
+              showResult(result, "ok", "Result", body.result)
+            }
+            loadLogs()
+          } catch (e) {
+            showResult(result, "err", "Request failed", String(e))
+          } finally {
+            runBtn.disabled = false
+            runBtn.textContent = "Run"
+          }
+        })
+        return card
+      }
+
+      function showResult(el, cls, tag, payload) {
+        el.className = "result show " + cls
+        el.replaceChildren(
+          $("span", { className: "tag", textContent: tag }),
+          $("pre", { textContent: format(payload) }),
+        )
+      }
+      function format(v) {
+        if (typeof v === "string") return v
+        try {
+          return JSON.stringify(v, null, 2)
+        } catch {
+          return String(v)
+        }
+      }
+
+      // --- logs ---------------------------------------------------------------
+      async function loadLogs() {
+        try {
+          const res = await apiFetch("/api/logs")
+          const { logs } = await res.json()
+          const box = document.getElementById("logs")
+          if (!logs || logs.length === 0) {
+            box.replaceChildren($("p", { className: "muted", textContent: "No calls yet." }))
+            return
+          }
+          box.replaceChildren(
+            ...logs
+              .slice()
+              .reverse()
+              .map((entry) => {
+                const el = $("div", { className: "log" })
+                const when = new Date(entry.time).toLocaleTimeString()
+                const meta = $("div", { className: "log-meta" })
+                meta.append($("b", { textContent: entry.name }), " · " + when)
+                el.append(
+                  meta,
+                  $("pre", {
+                    textContent:
+                      "args: " + format(entry.args) + "\nresult: " + format(entry.result),
+                  }),
+                )
+                return el
+              }),
+          )
+        } catch {
+          /* logs are best-effort */
+        }
+      }
+
+      // --- boot ---------------------------------------------------------------
+      async function boot() {
+        if (!token) {
+          statusEl.textContent = "missing token — open the URL printed by `clq inspect`"
+          document
+            .getElementById("tools")
+            .replaceChildren(
+              $("p", { className: "muted", textContent: "No token provided." }),
+            )
+          return
+        }
+        try {
+          const res = await apiFetch("/api/tools")
+          if (!res.ok) throw new Error("HTTP " + res.status)
+          const { tools } = await res.json()
+          const box = document.getElementById("tools")
+          if (!tools || tools.length === 0) {
+            box.replaceChildren(
+              $("p", { className: "muted", textContent: "This project registers no tools." }),
+            )
+          } else {
+            box.replaceChildren(...tools.map(renderTool))
+          }
+          statusEl.textContent = (tools ? tools.length : 0) + " tool(s)"
+          loadLogs()
+        } catch (e) {
+          statusEl.textContent = "failed to load: " + String(e)
+        }
+      }
+
+      document.getElementById("refresh-logs").addEventListener("click", loadLogs)
+      boot()
+    </script>
+  </body>
+</html>
