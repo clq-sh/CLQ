@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     inspect: "src/inspect.ts",
+    config: "src/config.ts",
     "test-fixtures/stdio-server": "src/protocol/test-fixtures/stdio-server.ts",
   },
   format: ["esm", "cjs"],

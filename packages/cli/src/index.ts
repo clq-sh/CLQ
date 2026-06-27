@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 import { cac } from "cac"
 import { registerAddCommand } from "./commands/add.js"
 import { registerDevCommand } from "./commands/dev.js"
+import { registerDoctorCommand } from "./commands/doctor.js"
 import { registerInitCommand } from "./commands/init.js"
 import { registerInspectCommand } from "./commands/inspect.js"
 
@@ -32,6 +33,7 @@ registerInitCommand(cli)
 registerAddCommand(cli)
 registerDevCommand(cli)
 registerInspectCommand(cli)
+registerDoctorCommand(cli)
 
 cli.on("command:*", () => {
   console.error("Unknown command. Run `clq --help` to see available commands.")

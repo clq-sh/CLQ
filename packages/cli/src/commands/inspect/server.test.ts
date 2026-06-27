@@ -158,6 +158,19 @@ describe("clq inspect backend (two-process, security)", () => {
     expect(html).not.toContain(inspector.token)
   }, 40_000)
 
+  test("a traversal path is not served the static file and never leaks host files", async () => {
+    inspector = await startInspectServer({ root: projectDir })
+    // Only the exact path "/" serves the page; a traversal attempt resolves elsewhere
+    // and falls through to the Origin/token gate, never to a filesystem path lookup.
+    const res = await fetch(
+      `${origin(inspector.port)}/../../../../../../etc/passwd`,
+    )
+    expect(res.status).not.toBe(200)
+    const body = await res.text()
+    expect(body).not.toContain("root:")
+    expect(body).not.toContain("CLQ Inspector")
+  }, 40_000)
+
   test("forged Origin is rejected with 403 before any token logic", async () => {
     inspector = await startInspectServer({ root: projectDir })
     const res = await fetch(`${origin(inspector.port)}/api/tools`, {
