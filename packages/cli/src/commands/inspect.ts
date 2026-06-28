@@ -15,7 +15,10 @@ export function registerInspectCommand(cli: CAC): void {
         return
       }
 
-      const inspector = await startInspectServer({ root })
+      const portOverride = process.env.CLQ_INSPECT_PORT
+        ? Number(process.env.CLQ_INSPECT_PORT)
+        : undefined
+      const inspector = await startInspectServer({ root, port: portOverride })
       console.log(
         `Inspector running at http://127.0.0.1:${inspector.port}/?token=${inspector.token}`,
       )

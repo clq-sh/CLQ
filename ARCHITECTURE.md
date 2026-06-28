@@ -154,3 +154,26 @@ The inspector UI is a **single hand-written `index.html`** — inline `<style>` 
 **The secret-redaction guarantee is an architectural promise, not an incidental behavior.** In `scanFileContent`, the real matched value `m` exists only inside the innermost loop body, where it is used for exactly one thing — `maskValue(m)` — and is then unreferenced. It is never assigned to another variable, never returned, never logged, never placed on the `Finding`. The `Finding` carries `masked` only. `maskValue` reveals at most the first 3 and last 2 characters (short values ≤6 chars are fully starred), so the original is not reconstructable. The unit test enforces this by asserting the full fake secret is not a substring of `JSON.stringify(finding)` at all — the scope boundary is verified, not just the happy-path output.
 
 **`clq doctor` makes zero network calls by design, not by current omission.** Every check is local: filesystem reads for the secret scan and dependency check, and an in-process config validation via a local `tsx` child. There is no telemetry, no "phone home", no remote secret-verification step — a security tool that scans for credentials must never be the thing that exfiltrates them. The hand-rolled regex patterns (rather than a third-party secret-scanning dependency) keep that guarantee owned end to end by CLQ.
+
+## Phase 2 — Complete
+
+**Exit condition met.** `packages/cli/src/__e2e__/full-flow.test.ts` is the gate for Phase 2. It is a single self-contained test suite that proves all Phase 2 commands work together in sequence against a real project scaffolded outside the monorepo:
+
+1. `clq init e2e-test` — asserts file tree and placeholder substitution.
+2. `clq add ping_tool` — asserts the generated file exists with a valid, non-empty description.
+3. `pnpm install` (real network) + `pnpm build` — asserts `dist/index.js` is produced.
+4. `clq doctor` — asserts exit 0 on the clean project.
+5. `clq doctor` (with injected fake secret) — asserts non-zero exit AND that the raw secret literal is absent from stdout.
+6. `clq inspect` — re-runs the Stage 4 security assertions (forged Origin → 403; missing token → 401; valid credentials → 200) against a live end-to-end instance spawned from the built CLI binary, then shuts it down via SIGINT and verifies both the inspector parent and its tsx child are gone.
+7. `clq dev` — asserts the watch banner appears and the process exits cleanly via SIGINT with no orphan.
+8. `afterAll` PID sweep — asserts every PID captured anywhere in the file is gone from the process table.
+
+**Final CLI command surface** (Phase 2):
+
+- `clq init [project-name]` — scaffold a new CLQ project from the bundled template.
+- `clq add <tool-name>` — add a new tool file to the current project.
+- `clq dev` — start the local dev server with hot reload via `tsx watch`.
+- `clq inspect` — launch the two-process local web inspector with origin + token security.
+- `clq doctor` — run a full project health check (config, deps, secret scan).
+
+**Core type contracts:** No core types (`ColloquialError`, `ColloquialContext`, `ColloquialToolDefinition`, `ColloquialDriver`, `ColloquialDriverStartConfig`, `ColloquialServerConfig`, `ColloquialMiddleware`) were touched by anything built in Phase 2. The Phase 1 frozen interfaces are unchanged. No optional fields were added to any core type. This is the expected and preferred outcome.
