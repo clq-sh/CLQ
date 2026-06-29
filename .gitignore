@@ -2,3 +2,6 @@ node_modules
 dist
 .turbo
 *.log
+.claude/
+package-lock.json
+phase2-prompt.txt

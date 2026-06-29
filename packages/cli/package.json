@@ -1,18 +1,18 @@
 {
   "name": "@clq-sh/cli",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "bin": {
     "clq": "./dist/index.js"
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/copy-assets.mjs",
     "test": "vitest run"
   },
   "dependencies": {
     "@clack/prompts": "^0.7.0",
-    "@clq-sh/core": "workspace:*",
+    "@clq-sh/core": "0.1.0",
     "cac": "^6.7.14",
     "execa": "^9.5.1",
     "tsx": "^4.19.3"
