@@ -25,12 +25,11 @@ const FAKE_SECRET = `ghp_${"Z9y8X7w6V5u4T3s2R1q0P9o8N7m6L5k4J3h2"}`
 
 let workDir: string
 
-/** Write a minimal CLQ project; `envBlock` is inlined into colloquial.config.ts. */
 function scaffold(opts: { envBlock?: string; secretFile?: boolean }): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "clq-doctor-"))
   const envPart = opts.envBlock ? `, env: ${opts.envBlock}` : ""
   fs.writeFileSync(
-    path.join(dir, "colloquial.config.ts"),
+    path.join(dir, "clq.config.ts"),
     `import { defineConfig } from "@clq-sh/core"\nexport default defineConfig({ name: "doc-fixture", version: "0.1.0"${envPart} })\n`,
   )
   fs.mkdirSync(path.join(dir, "src"), { recursive: true })
@@ -111,11 +110,8 @@ describe("clq doctor (built CLI, spawned)", () => {
     const result = await runDoctor(workDir)
     expect(result.exitCode).not.toBe(0)
     const out = String(result.stdout)
-    // The scanner flagged it...
     expect(out).toContain("GitHub token")
-    // ...the full raw secret is NOWHERE in the output...
     expect(out).not.toContain(FAKE_SECRET)
-    // ...only a masked form (first 3 + last 2) is shown.
     expect(out).toContain(FAKE_SECRET.slice(0, 3))
     expect(out).toContain(FAKE_SECRET.slice(-2))
   }, 60_000)

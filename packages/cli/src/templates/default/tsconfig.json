@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "esModuleInterop": true
   },
-  "include": ["src", "colloquial.config.ts"]
+  "include": ["src", "clq.config.ts"]
 }

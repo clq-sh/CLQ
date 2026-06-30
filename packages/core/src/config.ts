@@ -1,6 +1,5 @@
 import { errors } from "./errors.js"
 
-/** Declares one expected environment variable: its type, docs, and optional default/secret flag. */
 type EnvVarDeclaration = {
   type: "string" | "number" | "boolean"
   description: string
@@ -8,31 +7,27 @@ type EnvVarDeclaration = {
   default?: string | number | boolean
 }
 
-/** The shape a colloquial.config.ts file exports: identity, version, and declared env vars. */
-type ColloquialConfigInput = {
+type CLQConfigInput = {
   name: string
   version: string
   env?: Record<string, EnvVarDeclaration>
 }
 
 /**
- * Declares a config with full TypeScript checking of its shape. This is an identity
- * function at runtime — env LOADING is deferred to loadConfig() because process.env is
- * only meaningful at server-start time, not when the config module is first imported.
+ * Identity function at runtime — env loading is deferred to loadConfig() because
+ * process.env is only meaningful at server-start time, not at module import time.
  */
-export function defineConfig(
-  config: ColloquialConfigInput,
-): ColloquialConfigInput {
+export function defineConfig(config: CLQConfigInput): CLQConfigInput {
   return config
 }
 
 /**
- * Reads and coerces declared env vars from process.env at server-start time. Throws a
- * CONFIG_MISSING_ENV_VAR error for any required var that is absent or fails type coercion,
- * so misconfiguration fails loudly up front rather than confusingly mid-request.
+ * Reads and coerces declared env vars from process.env at server-start time.
+ * Throws CONFIG_MISSING_ENV_VAR for any required var that is absent or unparseable,
+ * so misconfiguration fails loudly up front rather than mid-request.
  */
 export function loadConfig(
-  config: ColloquialConfigInput,
+  config: CLQConfigInput,
 ): Record<string, string | number | boolean> {
   const resolved: Record<string, string | number | boolean> = {}
   for (const [key, decl] of Object.entries(config.env ?? {})) {

@@ -7,13 +7,11 @@ import type {
   ColloquialToolDefinition,
 } from "./types.js"
 
-/** Options for starting a server: which driver and transport to use. */
 type StartOptions = { driver?: "mcp" | "auto"; transport?: "stdio" }
 
 /**
- * Creates a chainable server: register tools with .tool(), middleware with .use(),
- * then .start() to serve them over a driver. Middleware is reserved here but not yet
- * executed — execution is Phase 3 scope.
+ * Creates a chainable server. Middleware registered with .use() is stored but not yet
+ * executed around tool calls — that behavior is reserved for a future release.
  */
 export function createServer(config: ColloquialServerConfig) {
   const tools: ColloquialToolDefinition[] = []
@@ -32,6 +30,27 @@ export function createServer(config: ColloquialServerConfig) {
       return api
     },
     async start(options: StartOptions = {}): Promise<ColloquialDriver> {
+      // CLQ_INSPECT_REPORT is set by `clq inspect` when it spawns the project process.
+      // Report the tool list over stdio and skip the MCP server — the inspector parent
+      // holds the only listener. User code never needs to know this env var exists.
+      if (process.env.CLQ_INSPECT_REPORT) {
+        const { startInspectReporter } = await import("./inspect.js")
+        startInspectReporter(tools)
+        return {
+          name: "inspect-reporter",
+          start: async () => {},
+          stop: async () => {},
+        }
+      }
+      // CLQ_INSPECT alone (no report) means we're under the inspector but it only
+      // needs the process alive, not the MCP server running.
+      if (process.env.CLQ_INSPECT) {
+        return {
+          name: "inspect-idle",
+          start: async () => {},
+          stop: async () => {},
+        }
+      }
       const driverName =
         options.driver === "auto" || !options.driver ? "mcp" : options.driver
       if (driverName !== "mcp") {

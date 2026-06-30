@@ -2,7 +2,6 @@ import { z } from "zod"
 import { defineTool } from "../../tool.js"
 import { createMCPStdioDriver } from "../mcp-stdio-driver.js"
 
-/** Minimal standalone MCP stdio server used by the driver integration test. */
 const echo = defineTool({
   name: "echo",
   description: "Echo a string back to the caller.",

@@ -1,9 +1,5 @@
 import path from "node:path"
 
-/**
- * Validate a slug — used for both project names and tool names: letters, numbers,
- * and hyphens only, must start with an alphanumeric character.
- */
 export function validateSlug(name: string): {
   valid: boolean
   reason?: string
@@ -19,8 +15,8 @@ export function validateSlug(name: string): {
 
 /**
  * Resolve the target directory for a new project and prove it stays inside cwd.
- * Throws on any traversal attempt — the resolved absolute path must be cwd itself
- * or a descendant of it, never a sibling or ancestor.
+ * Throws on any traversal attempt — the resolved path must be cwd or a descendant,
+ * never a sibling or ancestor.
  */
 export function resolveSafeTargetPath(name: string): string {
   const target = path.resolve(process.cwd(), name)

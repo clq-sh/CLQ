@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest"
 import { z } from "zod"
 import { ColloquialErrorImpl } from "./errors.js"
+import { startInspectReporter } from "./inspect.js"
 import { createMCPStdioDriver } from "./protocol/mcp-stdio-driver.js"
 import { defineTool } from "./tool.js"
 import type { ColloquialMiddleware } from "./types.js"
@@ -14,10 +15,16 @@ vi.mock("./protocol/mcp-stdio-driver.js", () => {
   }
 })
 
-// Imported after the mock declaration; vi.mock is hoisted so this resolves to the mock.
+// Mock the inspect module so startInspectReporter never actually touches stdio.
+vi.mock("./inspect.js", () => ({
+  startInspectReporter: vi.fn(),
+}))
+
+// Imported after the mock declarations; vi.mock is hoisted so these resolve to the mocks.
 import { createServer } from "./server.js"
 
 const mockedCreateDriver = vi.mocked(createMCPStdioDriver)
+const mockedStartInspectReporter = vi.mocked(startInspectReporter)
 
 function getDriverSpies() {
   // The factory returns the same shared start/stop spies on every call.
@@ -43,6 +50,11 @@ const toolB = defineTool({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // Ensure inspect env vars never leak between tests.
+  // biome-ignore lint/performance/noDelete: assigning undefined writes the string "undefined" which is truthy — delete is the only way to unset a process.env key
+  delete process.env.CLQ_INSPECT_REPORT
+  // biome-ignore lint/performance/noDelete: same as above
+  delete process.env.CLQ_INSPECT
 })
 
 describe("createServer", () => {
@@ -116,6 +128,44 @@ describe("createServer", () => {
     await server.start({ driver: "auto" })
     await server.start()
     expect(mockedCreateDriver).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("start() inspect modes", () => {
+  test("CLQ_INSPECT_REPORT=1 calls startInspectReporter with registered tools and returns a no-op driver", async () => {
+    process.env.CLQ_INSPECT_REPORT = "1"
+    const server = createServer({ name: "s", version: "1.0.0" })
+    server.tool(toolA)
+
+    const driver = await server.start()
+
+    expect(mockedStartInspectReporter).toHaveBeenCalledOnce()
+    expect(mockedStartInspectReporter).toHaveBeenCalledWith([toolA])
+    expect(driver.name).toBe("inspect-reporter")
+    expect(mockedCreateDriver).not.toHaveBeenCalled()
+  })
+
+  test("CLQ_INSPECT=1 returns an idle no-op driver without starting MCP or calling inspect reporter", async () => {
+    process.env.CLQ_INSPECT = "1"
+    const server = createServer({ name: "s", version: "1.0.0" })
+
+    const driver = await server.start()
+
+    expect(driver.name).toBe("inspect-idle")
+    expect(mockedCreateDriver).not.toHaveBeenCalled()
+    expect(mockedStartInspectReporter).not.toHaveBeenCalled()
+  })
+
+  test("no-op driver satisfies ColloquialDriver (has name, callable start, callable stop)", async () => {
+    process.env.CLQ_INSPECT_REPORT = "1"
+    const server = createServer({ name: "s", version: "1.0.0" })
+    const driver = await server.start()
+
+    expect(typeof driver.name).toBe("string")
+    expect(typeof driver.start).toBe("function")
+    expect(typeof driver.stop).toBe("function")
+    await expect(driver.start({ tools: [] })).resolves.toBeUndefined()
+    await expect(driver.stop()).resolves.toBeUndefined()
   })
 })
 

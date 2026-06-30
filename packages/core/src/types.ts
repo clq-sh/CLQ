@@ -13,7 +13,6 @@ export interface ColloquialContext {
   timestamp: number
 }
 
-/** A single invokable tool: its schema metadata, auth requirements, and handler. */
 export interface ColloquialToolDefinition<TInput = unknown, TOutput = unknown> {
   name: string
   description: string
@@ -31,13 +30,11 @@ export interface ColloquialDriver {
   stop: () => Promise<void>
 }
 
-/** Configuration handed to a driver at startup, carrying the tool set plus extras. */
 export interface ColloquialDriverStartConfig {
   tools: ColloquialToolDefinition[]
   [key: string]: unknown
 }
 
-/** Identifying metadata for a running CLQ server instance. */
 export interface ColloquialServerConfig {
   name: string
   version: string

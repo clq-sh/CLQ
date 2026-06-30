@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import { resolveSafeTargetPath } from "../utils/safe-path.js"
 import { registerInitCommand } from "./init.js"
 
-/** Run `clq init <args>` against the registered command and await the action. */
 async function runInit(args: string[]): Promise<void> {
   const cli = cac("clq")
   registerInitCommand(cli)
@@ -14,7 +13,6 @@ async function runInit(args: string[]): Promise<void> {
   await cli.runMatchedCommand()
 }
 
-/** Read a directory tree into a { relativePath: contents } map for snapshot comparison. */
 function snapshotTree(root: string): Record<string, string> {
   const out: Record<string, string> = {}
   const walk = (dir: string) => {
@@ -32,6 +30,7 @@ let workDir: string
 let canaryDir: string
 let canaryFile: string
 let originalCwd: string
+let logged: string[]
 
 beforeEach(() => {
   originalCwd = process.cwd()
@@ -43,7 +42,10 @@ beforeEach(() => {
   fs.writeFileSync(canaryFile, "original")
   process.chdir(workDir)
   process.exitCode = 0
-  vi.spyOn(console, "log").mockImplementation(() => {})
+  logged = []
+  vi.spyOn(console, "log").mockImplementation((...args) => {
+    logged.push(String(args[0] ?? ""))
+  })
   vi.spyOn(console, "error").mockImplementation(() => {})
 })
 
@@ -68,10 +70,7 @@ describe("clq init", () => {
     ) as { name: string }
     expect(pkg.name).toBe("my-app")
 
-    const config = fs.readFileSync(
-      path.join(target, "colloquial.config.ts"),
-      "utf8",
-    )
+    const config = fs.readFileSync(path.join(target, "clq.config.ts"), "utf8")
     expect(config).toContain('name: "my-app"')
     // No unrendered placeholders should survive anywhere.
     const tree = snapshotTree(target)
@@ -79,6 +78,35 @@ describe("clq init", () => {
       expect(contents).not.toContain("{{projectName}}")
     }
     expect(fs.existsSync(path.join(target, "src", "index.ts"))).toBe(true)
+  })
+
+  test("scaffold creates .gitignore with node_modules/, dist/, and .env entries", async () => {
+    await runInit(["my-app"])
+
+    expect(process.exitCode).toBe(0)
+    const gitignore = path.join(workDir, "my-app", ".gitignore")
+    expect(fs.existsSync(gitignore)).toBe(true)
+    const content = fs.readFileSync(gitignore, "utf8")
+    expect(content).toContain("node_modules/")
+    expect(content).toContain("dist/")
+    expect(content).toContain(".env")
+  })
+
+  test("scaffold creates .env.example", async () => {
+    await runInit(["my-app"])
+
+    expect(process.exitCode).toBe(0)
+    const envExample = path.join(workDir, "my-app", ".env.example")
+    expect(fs.existsSync(envExample)).toBe(true)
+  })
+
+  test("stdout includes testing commands and Claude Desktop instructions", async () => {
+    await runInit(["my-app"])
+
+    const output = logged.join("\n")
+    expect(output).toContain("clq inspect")
+    expect(output).toContain("clq dev")
+    expect(output).toContain("Claude Desktop")
   })
 
   test("a second run without --force refuses and writes nothing new", async () => {
@@ -102,7 +130,6 @@ describe("clq init", () => {
     await runInit(["forced", "--force"])
 
     expect(process.exitCode).toBe(0)
-    // Template files were written over the non-empty directory.
     const pkg = JSON.parse(
       fs.readFileSync(path.join(target, "package.json"), "utf8"),
     ) as { name: string }
@@ -113,9 +140,7 @@ describe("clq init", () => {
     await runInit(["../../escape"])
 
     expect(process.exitCode).toBe(1)
-    // Nothing was created inside the working dir...
     expect(fs.readdirSync(workDir)).toHaveLength(0)
-    // ...and the pre-existing sibling canary is byte-for-byte unchanged.
     expect(fs.readFileSync(canaryFile, "utf8")).toBe("original")
     expect(fs.existsSync(path.join(canaryDir, "escape"))).toBe(false)
   })

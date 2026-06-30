@@ -6,25 +6,21 @@ type CallRequest = { type: "call"; id: number; name: string; args: unknown }
 
 /**
  * Runs inside a project process that `clq inspect` spawns (when CLQ_INSPECT_REPORT is
- * set). It speaks a newline-delimited JSON protocol over this process's own stdio — it
- * opens NO network listener of its own:
+ * set). Opens NO network listener of its own — the inspector parent holds the only
+ * HTTP listener, keeping the whole surface to a single 127.0.0.1-bound port.
  *
- *   - on start, writes `{ type: "tools", tools }` (the MCP tool list) to stdout
- *   - for each `{ type: "call", id, name, args }` line read from stdin, runs the tool's
- *     validated handler and writes back `{ type: "result", id, output }` (or an error)
- *
- * The inspector parent process holds the only HTTP listener; this keeps the whole
- * surface to a single 127.0.0.1-bound port.
+ * Protocol over stdio:
+ *   - on start, writes `{ type: "tools", tools }` to stdout
+ *   - for each `{ type: "call", id, name, args }` line on stdin, runs the handler
+ *     and writes back `{ type: "result", id, output }` (or an error variant)
  */
 export function startInspectReporter(tools: ColloquialToolDefinition[]): void {
   const write = (msg: unknown): void => {
     process.stdout.write(`${JSON.stringify(msg)}\n`)
   }
 
-  // 1. Announce the catalog.
   write({ type: "tools", tools: buildToolsList(tools).tools })
 
-  // 2. Answer calls, one line at a time.
   let buffer = ""
   process.stdin.setEncoding("utf8")
   process.stdin.on("data", (chunk: string) => {

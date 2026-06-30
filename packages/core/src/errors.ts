@@ -1,7 +1,6 @@
 import type { ZodError } from "zod"
 import type { ColloquialError } from "./types.js"
 
-/** Concrete, throwable implementation of the ColloquialError contract. */
 export class ColloquialErrorImpl extends Error implements ColloquialError {
   readonly code: string
   readonly cause?: string
@@ -17,7 +16,6 @@ export class ColloquialErrorImpl extends Error implements ColloquialError {
   }
 }
 
-/** Joins Zod issues into a short, human-readable string capped at 3 shown. */
 function formatZodIssues(error: ZodError): string {
   const issues = error.issues
   const shown = issues.slice(0, 3).map((issue) => {
@@ -29,7 +27,6 @@ function formatZodIssues(error: ZodError): string {
   return shown.join("; ") + suffix
 }
 
-/** Factory catalog of every framework error, each returning a ready-to-throw instance. */
 export const errors = {
   missingDescription(toolName: string): ColloquialErrorImpl {
     return new ColloquialErrorImpl({
@@ -70,7 +67,7 @@ export const errors = {
     return new ColloquialErrorImpl({
       code: "CONFIG_MISSING_ENV_VAR",
       message: `Required environment variable '${varName}' is not set.`,
-      cause: description ?? "This variable is required by colloquial.config.ts",
+      cause: description ?? "This variable is required by clq.config.ts",
       fix: `Set ${varName} in your .env file or environment before starting the server.`,
     })
   },

@@ -1,9 +1,8 @@
 import { type Options, type ResultPromise, execa } from "execa"
 
-/**
- * This is the ONLY sanctioned way this CLI spawns a process. command and args are
- * always separate — never build a shell string. Never pass shell: true.
- */
+// The ONLY sanctioned way this CLI spawns a process. command and args are always
+// separate — never a shell string, never shell: true. Shell injection is structurally
+// impossible when command and args are kept as distinct values.
 export function execSafe(
   command: string,
   args: string[] = [],

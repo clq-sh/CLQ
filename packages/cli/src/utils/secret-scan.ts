@@ -14,9 +14,8 @@ const PATTERNS: SecretPattern[] = [
 ]
 
 /**
- * Replace a secret value with a masked form that reveals only its first 3 and last 2
- * characters. Short values (≤6 chars) are fully starred. The real value is never
- * reconstructable from the mask.
+ * Mask a secret value: reveal only the first 3 and last 2 characters.
+ * Short values (≤6 chars) are fully starred. The original is not reconstructable.
  */
 export function maskValue(value: string): string {
   if (value.length <= 6) return "*".repeat(value.length)
@@ -48,9 +47,8 @@ export function scanFileContent(filePath: string, content: string): Finding[] {
             patternName: name,
             masked: maskValue(m),
           })
-          // CRITICAL: `m` (the real matched value) is used ONLY to compute `masked`
-          // here, immediately, and is never assigned to any other variable, never
-          // returned, never logged. The Finding object contains masked ONLY.
+          // CRITICAL: `m` is used only to compute `masked` here and is never
+          // assigned elsewhere, returned, or logged. Finding carries masked only.
         }
       }
     }
@@ -58,7 +56,6 @@ export function scanFileContent(filePath: string, content: string): Finding[] {
   return findings
 }
 
-/** Recursively yield .ts files under dir, skipping node_modules and dist. */
 function walkTsFiles(dir: string): string[] {
   const out: string[] = []
   let entries: fs.Dirent[]

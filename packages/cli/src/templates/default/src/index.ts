@@ -1,31 +1,26 @@
 import { createServer, defineTool } from "@clq-sh/core"
 import { z } from "zod"
 
-const echo = defineTool({
-  name: "echo",
-  description: "Echo a message back to the caller.",
-  input: z.object({ message: z.string() }),
-  output: z.object({ echoed: z.string() }),
-  handler: async ({ input }) => ({ echoed: input.message }),
+const getWeather = defineTool({
+  name: "get_weather",
+  description:
+    "Get current weather for a city. Returns temperature in Celsius and a short condition.",
+  input: z.object({
+    city: z.string().describe("City name, e.g. 'London' or 'Addis Ababa'"),
+  }),
+  output: z.object({
+    temperature: z.number().describe("Temperature in Celsius"),
+    condition: z.string().describe("Weather condition, e.g. 'sunny' or 'cloudy'"),
+  }),
+  handler: async ({ input }) => {
+    // Replace with a real API call:
+    // const res = await fetch(`https://api.example.com/weather?city=${encodeURIComponent(input.city)}`)
+    // const data = await res.json() as { temp_c: number; description: string }
+    // return { temperature: data.temp_c, condition: data.description }
+    return { temperature: 22, condition: "sunny" }
+  },
 })
 
-// Export the same tool set passed to server.tool(). `clq inspect` imports { tools }
-// (with CLQ_INSPECT set so the stdio driver below never starts) to introspect and call
-// tools without launching a real MCP server.
-export const tools = [echo]
-
 const server = createServer({ name: "{{projectName}}", version: "0.1.0" })
-for (const tool of tools) server.tool(tool)
-
-// When spawned by `clq inspect`, report the tools to the inspector over stdio instead
-// of starting the MCP server.
-if (process.env.CLQ_INSPECT_REPORT) {
-  import("@clq-sh/core/inspect").then(({ startInspectReporter }) => {
-    startInspectReporter(tools)
-  })
-}
-
-// Normal run: start the stdio MCP server. Skipped under inspection.
-if (!process.env.CLQ_INSPECT) {
-  server.start({ driver: "mcp", transport: "stdio" })
-}
+server.tool(getWeather)
+server.start()

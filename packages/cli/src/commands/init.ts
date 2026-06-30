@@ -7,10 +7,8 @@ import { resolveSafeTargetPath, validateSlug } from "../utils/safe-path.js"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
-/**
- * Locate the bundled default template, which lives at a different relative offset
- * depending on whether we run from source (src/commands) or the built bundle (dist).
- */
+// Locate the bundled default template, which lives at a different relative offset
+// depending on whether we run from source (src/commands) or the built bundle (dist).
 function findTemplateDir(): string {
   const candidates = [
     resolve(here, "templates/default"), // built: dist/index.js -> dist/templates/default
@@ -73,10 +71,23 @@ export function registerInitCommand(cli: CAC): void {
         fs.mkdirSync(target, { recursive: true })
         copyTemplateDir(findTemplateDir(), target, { projectName: name })
 
-        console.log(`Created ${name}. Next steps:`)
+        console.log(`\nCreated ${name}.\n`)
         console.log(`  cd ${name}`)
         console.log("  pnpm install")
         console.log("  pnpm build")
+        console.log("")
+        console.log("Test your tools:")
+        console.log(
+          "  clq inspect          # browser UI — run tools interactively",
+        )
+        console.log("  clq dev              # hot-reload dev server")
+        console.log("")
+        console.log(
+          "Connect to Claude Desktop — add to claude_desktop_config.json:",
+        )
+        console.log(
+          `  "${name}": { "command": "node", "args": ["<absolute-path>/${name}/dist/index.js"] }`,
+        )
       },
     )
 }

@@ -2,10 +2,6 @@ import type { ZodTypeAny, z } from "zod"
 import { errors } from "./errors.js"
 import type { ColloquialContext, ColloquialToolDefinition } from "./types.js"
 
-/**
- * Defines a validated tool: checks the description up front, then returns a
- * ColloquialToolDefinition whose handler validates input and output on every call.
- */
 export function defineTool<
   TInputSchema extends ZodTypeAny,
   TOutputSchema extends ZodTypeAny | undefined = undefined,

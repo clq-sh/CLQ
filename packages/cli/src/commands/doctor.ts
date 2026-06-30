@@ -10,19 +10,17 @@ import { scanDirectory } from "../utils/secret-scan.js"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
-// colloquial.config.ts is TypeScript that imports @clq-sh/core for defineConfig, so the
-// built CLI (plain node) cannot import it directly. A short-lived `tsx` child whose
-// module resolution is the project itself imports the config and serializes the plain
-// declaration object (name/version/env) back as a single JSON line. The env VALIDATION
-// (loadConfig, reading process.env) then runs here in the doctor process, so the real
-// (possibly secret) env values are never sent to or read by the child at all.
+// clq.config.ts is TypeScript that imports @clq-sh/core, so the built CLI (plain node)
+// cannot import it directly. A short-lived `tsx` child whose module resolution is the
+// project itself imports the config and serializes the plain declaration object back as
+// a single JSON line. The env validation (loadConfig) then runs here in the doctor
+// process, so the real env values are never sent to or read by the child at all.
 //
 // MUST be a single line: on Windows the `tsx` launcher is a .CMD shim, and a multi-line
 // -e argument gets mangled by cmd.exe (newlines break the argument), producing no output.
 const CONFIG_LOAD_SCRIPT =
   "import('node:url').then(async ({ pathToFileURL }) => { try { " +
   "const mod = await import(pathToFileURL(process.env.CLQ_CONFIG_PATH).href); " +
-  // Unwrap the CJS/ESM interop double-default that a tsx-transpiled config can produce.
   "const cfg = (mod.default && mod.default.default) ? mod.default.default : mod.default; " +
   "process.stdout.write(JSON.stringify({ ok: true, config: cfg })) " +
   "} catch (e) { " +
@@ -32,12 +30,11 @@ const CONFIG_LOAD_SCRIPT =
 type ConfigCheck = { ok: boolean; message?: string; fix?: string }
 
 async function checkConfig(root: string): Promise<ConfigCheck> {
-  const configPath = path.join(root, "colloquial.config.ts")
+  const configPath = path.join(root, "clq.config.ts")
   if (!fs.existsSync(configPath)) {
-    return { ok: false, message: "colloquial.config.ts not found." }
+    return { ok: false, message: "clq.config.ts not found." }
   }
 
-  // 1. Load the config object via tsx (project module resolution).
   let loaded: { ok: boolean; config?: unknown; message?: string }
   try {
     const result = await execSafe("tsx", ["-e", CONFIG_LOAD_SCRIPT], {
@@ -49,17 +46,15 @@ async function checkConfig(root: string): Promise<ConfigCheck> {
     })
     loaded = JSON.parse(String(result.stdout))
   } catch {
-    return { ok: false, message: "Could not load colloquial.config.ts." }
+    return { ok: false, message: "Could not load clq.config.ts." }
   }
   if (!loaded || loaded.ok !== true) {
     return {
       ok: false,
-      message: loaded?.message ?? "Could not load colloquial.config.ts.",
+      message: loaded?.message ?? "Could not load clq.config.ts.",
     }
   }
 
-  // 2. Validate env in-process against this command's environment. `cause` carries the
-  //    declared description, so fold it into the message.
   try {
     loadConfig(loaded.config as Parameters<typeof loadConfig>[0])
     return { ok: true }

@@ -12,10 +12,7 @@ import type {
 } from "../types.js"
 import { buildToolsList, dispatchToolCall } from "./translate.js"
 
-/**
- * The first ColloquialDriver: serves CLQ tools over MCP via stdio using the official SDK.
- * All protocol meaning is delegated to the pure Stage 4 functions; this file only owns I/O.
- */
+// All protocol meaning is delegated to translate.ts; this file only owns I/O.
 export function createMCPStdioDriver(serverInfo: {
   name: string
   version: string

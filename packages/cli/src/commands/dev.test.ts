@@ -22,7 +22,7 @@ const cliEntry = resolve(packageRoot, "dist/index.js")
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-/** Collect a process and all of its descendants (so we can guarantee no orphan survives). */
+// Collect a process and all descendants so we can guarantee no orphan survives.
 function collectTree(pid: number): number[] {
   try {
     if (process.platform === "win32") {
@@ -70,7 +70,6 @@ function collectTree(pid: number): number[] {
   }
 }
 
-/** Force-kill an entire captured process tree. Best effort — already-dead pids are ignored. */
 function killTree(pids: number[]): void {
   for (const pid of pids) {
     try {
@@ -124,7 +123,6 @@ function killByCommandLine(needle: string): void {
   }
 }
 
-/** Poll until predicate(out) is true or the timeout elapses. */
 async function waitFor(
   getOut: () => string,
   predicate: (out: string) => boolean,
@@ -203,9 +201,7 @@ afterEach(async () => {
   })
 })
 
-afterAll(() => {
-  // Nothing global to tear down; each test cleans its own subtree in afterEach.
-})
+afterAll(() => {})
 
 describe("clq dev (built binary, real tsx watch)", () => {
   test("watches, restarts on change, and exits promptly on SIGINT", async () => {

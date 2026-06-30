@@ -222,9 +222,11 @@ describe("CLQ full end-to-end pipeline", () => {
     expect(fs.existsSync(projectDir)).toBe(true)
     for (const rel of [
       "package.json",
-      "colloquial.config.ts",
+      "clq.config.ts",
       "tsup.config.ts",
       "tsconfig.json",
+      ".gitignore",
+      ".env.example",
       path.join("src", "index.ts"),
     ]) {
       expect(
@@ -233,6 +235,14 @@ describe("CLQ full end-to-end pipeline", () => {
       ).toBe(true)
     }
 
+    // .gitignore must exclude node_modules and dist.
+    const gitignore = fs.readFileSync(
+      path.join(projectDir, ".gitignore"),
+      "utf8",
+    )
+    expect(gitignore).toContain("node_modules/")
+    expect(gitignore).toContain("dist/")
+
     // The {{projectName}} placeholder must be fully replaced everywhere.
     const pkg = JSON.parse(
       fs.readFileSync(path.join(projectDir, "package.json"), "utf8"),
@@ -240,7 +250,7 @@ describe("CLQ full end-to-end pipeline", () => {
     expect(pkg.name).toBe("e2e-test")
 
     const config = fs.readFileSync(
-      path.join(projectDir, "colloquial.config.ts"),
+      path.join(projectDir, "clq.config.ts"),
       "utf8",
     )
     expect(config).toContain('name: "e2e-test"')

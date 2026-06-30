@@ -87,7 +87,7 @@ describe("formatZodIssues (via invalidInput.cause)", () => {
 describe("optional-argument branches", () => {
   test("missingEnvVar falls back to default cause", () => {
     expect(errors.missingEnvVar("API_KEY").cause).toBe(
-      "This variable is required by colloquial.config.ts",
+      "This variable is required by clq.config.ts",
     )
     expect(errors.missingEnvVar("API_KEY", "Needed for X").cause).toBe(
       "Needed for X",

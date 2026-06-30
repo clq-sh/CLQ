@@ -59,7 +59,6 @@ export function registerDevCommand(cli: CAC): void {
       try {
         await child
       } catch {
-        // tsx watch exiting non-zero on a real error — surface it, don't swallow.
         console.error("Dev server exited with an error.")
       }
     })

@@ -156,9 +156,7 @@ describe("loadConfig", () => {
     }
     expect(caught).toBeInstanceOf(ColloquialErrorImpl)
     const e = caught as ColloquialErrorImpl
-    // The declared description is surfaced...
     expect(e.cause).toContain("Signing secret for tokens.")
-    // ...and no field exposes a raw value or the literal word "secret: true" etc.
     for (const text of [e.message, e.cause ?? "", e.fix ?? ""]) {
       expect(text).not.toContain("[object Object]")
       expect(text).not.toContain("undefined")

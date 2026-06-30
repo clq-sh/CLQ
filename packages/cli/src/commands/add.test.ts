@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 import { registerAddCommand } from "./add.js"
 import { registerInitCommand } from "./init.js"
 
-/** Run `clq init <args>` against the registered command and await the action. */
 async function runInit(args: string[]): Promise<void> {
   const cli = cac("clq")
   registerInitCommand(cli)
@@ -14,7 +13,6 @@ async function runInit(args: string[]): Promise<void> {
   await cli.runMatchedCommand()
 }
 
-/** Run `clq add <args>` against the registered command and await the action. */
 async function runAdd(args: string[]): Promise<void> {
   const cli = cac("clq")
   registerAddCommand(cli)
@@ -59,7 +57,6 @@ describe("clq add", () => {
     const contents = fs.readFileSync(toolFile, "utf8")
     expect(contents).not.toContain("{{toolName}}")
     expect(contents).toContain('name: "greet"')
-    // The generated description is a real non-empty sentence (passes Phase 1's check).
     expect(contents).toContain(
       "TODO: describe what greet does and when an agent should call it.",
     )

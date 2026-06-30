@@ -27,7 +27,6 @@ const require = createRequire(import.meta.url)
 const FAKE_SECRET = "sk-FAKE-SECRET-VALUE-DO-NOT-LEAK-9999"
 const linkType = process.platform === "win32" ? "junction" : "dir"
 
-/** The custom project entry: one tool that returns a secret under an apiKey-named key. */
 const PROJECT_ENTRY = `import { createServer, defineTool } from "@clq-sh/core"
 import { z } from "zod"
 
@@ -109,7 +108,6 @@ afterEach(async () => {
 })
 
 afterAll(() => {})
-
 function killByCommandLine(needle: string): void {
   try {
     if (process.platform === "win32") {

@@ -9,11 +9,6 @@ import { redactSecrets } from "../../utils/redact.js"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
-// The inspector UI is a single static file. Both the bundled layout (dist/index.js →
-// dist/public) and the source layout (src/commands/inspect/server.ts →
-// src/commands/inspect/public) resolve to the same relative path. Read it once at
-// module load; it never changes during a run. If it is somehow missing we fall back
-// to a tiny message rather than crashing the server.
 const indexHtml: string = (() => {
   try {
     return readFileSync(path.join(here, "public", "index.html"), "utf8")
@@ -43,7 +38,6 @@ export interface InspectServer {
   server: http.Server
   port: number
   token: string
-  /** Stop the HTTP server and the spawned project child. */
   close: () => Promise<void>
 }
 
@@ -91,7 +85,6 @@ export async function startInspectServer(opts: {
   const token = crypto.randomBytes(32).toString("hex")
   const entry = path.join(opts.root, "src", "index.ts")
 
-  // --- spawn the project as a child process (two-process handshake over stdio) ---
   const child = execSafe("tsx", [entry], {
     cwd: opts.root,
     env: { ...process.env, CLQ_INSPECT: "1", CLQ_INSPECT_REPORT: "1" },
@@ -216,14 +209,13 @@ export async function startInspectServer(opts: {
     if (req.method === "GET" && url.pathname === "/") {
       res.writeHead(200, {
         "content-type": "text/html; charset=utf-8",
-        // The page must never be cached cross-origin or persisted; it is loopback-only.
         "cache-control": "no-store",
       })
       res.end(indexHtml)
       return
     }
 
-    // SECURITY CHECK 1 — Origin, unconditionally, before anything else. A wrong-origin
+    // SECURITY: Origin is checked unconditionally, before anything else. A wrong-origin
     // request is rejected here and never reaches token validation, so it cannot even
     // learn whether a token would have been accepted.
     if (req.headers.origin !== expectedOrigin) {
@@ -231,7 +223,7 @@ export async function startInspectServer(opts: {
       return
     }
 
-    // SECURITY CHECK 2 — token, only after origin has passed.
+    // SECURITY: token checked only after origin has passed.
     if (req.headers["x-clq-token"] !== token) {
       sendJson(res, 401, { error: "Unauthorized." })
       return
@@ -289,7 +281,6 @@ export async function startInspectServer(opts: {
   )
   boundPort = port
 
-  // Wait for the child to report its tools (bounded), so /api/tools is ready.
   await Promise.race([registeredPromise, sleep(20_000)])
 
   const close = async (): Promise<void> => {

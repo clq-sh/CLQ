@@ -12,7 +12,6 @@ let child: ChildProcessWithoutNullStreams
 let stdoutBuffer = ""
 const pending = new Map<number, (msg: Record<string, unknown>) => void>()
 
-/** Send a JSON-RPC request and resolve with the response carrying the matching id. */
 function rpc(
   id: number,
   method: string,
@@ -38,7 +37,6 @@ function rpc(
   })
 }
 
-/** Fire-and-forget JSON-RPC notification (no id, no response expected). */
 function notify(method: string, params: Record<string, unknown> = {}): void {
   child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method, params })}\n`)
 }

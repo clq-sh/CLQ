@@ -8,10 +8,8 @@ import { validateSlug } from "../utils/safe-path.js"
 
 const here = dirname(fileURLToPath(import.meta.url))
 
-/**
- * Locate the bundled tool template, which sits at a different relative offset depending
- * on whether we run from source (src/commands) or the built bundle (dist).
- */
+// Locate the bundled tool template, which sits at a different relative offset depending
+// on whether we run from source (src/commands) or the built bundle (dist).
 function findToolTemplate(): string {
   const candidates = [
     resolve(here, "templates/tool.ts.template"), // built: dist -> dist/templates
@@ -47,9 +45,9 @@ export function registerAddCommand(cli: CAC): void {
       const toolsDir = path.join(root, "src", "tools")
       const targetFile = path.join(toolsDir, `${toolName}.ts`)
 
-      // Defense in depth (same pattern as Stage 1): the target must resolve to a path
-      // strictly inside toolsDir. validateSlug already forbids separators and `..`,
-      // but this guard refuses to write outside even if validation were ever loosened.
+      // Defense in depth: the target must resolve strictly inside toolsDir.
+      // validateSlug already forbids separators and `..`, but this guard refuses
+      // to write outside even if validation were ever loosened.
       const resolvedTarget = path.resolve(targetFile)
       if (!resolvedTarget.startsWith(path.resolve(toolsDir) + path.sep)) {
         console.error(
