@@ -24,23 +24,14 @@ importers:
         specifier: ^2
         version: 2.1.9(@types/node@20.19.43)
 
-  examples/weather-server:
-    dependencies:
-      '@clq-sh/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      zod:
-        specifier: ^3.23.8
-        version: 3.25.76
-
   packages/cli:
     dependencies:
       '@clack/prompts':
         specifier: ^0.7.0
         version: 0.7.0
       '@clq-sh/core':
-        specifier: 0.1.0
-        version: 0.1.0
+        specifier: workspace:*
+        version: link:../core
       cac:
         specifier: ^6.7.14
         version: 6.7.14
@@ -135,9 +126,6 @@ packages:
     resolution: {integrity: sha512-0MhX9/B4iL6Re04jPrttDm+BsP8y6mS7byuv0BvXgdXhbV5PdlsHt55dvNsuBCPZ7xq1oTAOOuotR9NFbQyMSA==}
     bundledDependencies:
       - is-unicode-supported
-
-  '@clq-sh/core@0.1.0':
-    resolution: {integrity: sha512-L/PNakm8wJkwvIba9MKkzSis0fm4NEvIhXKxflQurKlyBNcvS79/6zPgEHbheEkXaB0CD2ZFT0ByHx1h5tmfyQ==}
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -1590,15 +1578,6 @@ snapshots:
       '@clack/core': 0.3.5
       picocolors: 1.1.1
       sisteransi: 1.0.5
-
-  '@clq-sh/core@0.1.0':
-    dependencies:
-      '@modelcontextprotocol/sdk': 1.29.0(zod@3.25.76)
-      zod: 3.25.76
-      zod-to-json-schema: 3.25.2(zod@3.25.76)
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - supports-color
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

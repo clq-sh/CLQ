@@ -1,9 +1,0 @@
-{
-  "extends": "../../tsconfig.base.json",
-  "include": ["src", "clq.config.ts"],
-  "compilerOptions": {
-    "paths": {
-      "@clq-sh/core": ["../../packages/core/src/index.ts"]
-    }
-  }
-}
