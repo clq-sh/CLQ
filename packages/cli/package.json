@@ -1,6 +1,6 @@
 {
   "name": "@clq-sh/cli",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "type": "module",
   "bin": {
     "clq": "./dist/index.js"
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@clack/prompts": "^0.7.0",
-    "@clq-sh/core": "0.1.0",
+    "@clq-sh/core": "0.1.2",
     "cac": "^6.7.14",
     "execa": "^9.5.1",
     "tsx": "^4.19.3"
