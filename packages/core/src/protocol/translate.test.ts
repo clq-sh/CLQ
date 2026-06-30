@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest"
 import { z } from "zod"
+import { ColloquialErrorImpl } from "../errors.js"
 import { defineTool } from "../tool.js"
 import type { ColloquialContext } from "../types.js"
 import {
@@ -65,9 +66,10 @@ describe("dispatchToolCall", () => {
   test("unknown tool name returns isError with toolNotFound message", async () => {
     const result = await dispatchToolCall([weatherTool], "nope", {}, ctx)
     expect(result).toMatchObject({ isError: true })
-    expect(result.content[0].text).toBe(
+    expect(result.content[0].text).toContain(
       "Tool 'nope' is not registered on this server.",
     )
+    expect(result.content[0].text).toContain("Fix:")
   })
 
   test("invalid args against a real tool surface TOOL_INVALID_INPUT", async () => {
@@ -78,9 +80,55 @@ describe("dispatchToolCall", () => {
       ctx,
     )
     expect(result).toMatchObject({ isError: true })
-    expect(result.content[0].text).toBe(
+    expect(result.content[0].text).toContain(
       "Tool 'getWeather' received invalid input.",
     )
+    expect(result.content[0].text).toContain("Cause:")
+    expect(result.content[0].text).toContain("Fix:")
+  })
+
+  test("ColloquialErrorImpl with cause and fix surfaces all fields in error text", async () => {
+    const richTool = defineTool({
+      name: "rich",
+      description: "Throws a rich error.",
+      input: z.object({}),
+      handler: async () => {
+        throw new ColloquialErrorImpl({
+          code: "TEST_ERROR",
+          message: "Something went wrong.",
+          cause: "The database was unavailable.",
+          fix: "Check your connection string.",
+        })
+      },
+    })
+    const result = await dispatchToolCall([richTool], "rich", {}, ctx)
+    expect(result).toMatchObject({ isError: true })
+    expect(result.content[0].text).toContain("Something went wrong.")
+    expect(result.content[0].text).toContain(
+      "Cause: The database was unavailable.",
+    )
+    expect(result.content[0].text).toContain(
+      "Fix: Check your connection string.",
+    )
+  })
+
+  test("ColloquialErrorImpl with only message does not emit Cause or Fix lines", async () => {
+    const simpleTool = defineTool({
+      name: "simple",
+      description: "Throws a simple error with only a message.",
+      input: z.object({}),
+      handler: async () => {
+        throw new ColloquialErrorImpl({
+          code: "TEST_SIMPLE",
+          message: "Just the message.",
+        })
+      },
+    })
+    const result = await dispatchToolCall([simpleTool], "simple", {}, ctx)
+    expect(result).toMatchObject({ isError: true })
+    expect(result.content[0].text).toBe("Just the message.")
+    expect(result.content[0].text).not.toContain("Cause:")
+    expect(result.content[0].text).not.toContain("Fix:")
   })
 
   test("non-ColloquialError thrown by a handler is rethrown, not swallowed", async () => {

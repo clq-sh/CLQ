@@ -14,7 +14,7 @@ const getWeather = defineTool({
   }),
   handler: async ({ input }) => {
     // Replace with a real API call:
-    // const res = await fetch(`https://api.example.com/weather?city=${encodeURIComponent(input.city)}`)
+    // const res = await fetch(`https://your-weather-api.io/current?city=${encodeURIComponent(input.city)}`)
     // const data = await res.json() as { temp_c: number; description: string }
     // return { temperature: data.temp_c, condition: data.description }
     return { temperature: 22, condition: "sunny" }

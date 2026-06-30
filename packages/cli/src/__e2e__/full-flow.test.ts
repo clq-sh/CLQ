@@ -563,15 +563,13 @@ describe("CLQ full end-to-end pipeline", () => {
         devOut += d.toString()
       })
 
-      // Wait for the "Watching for changes" banner (printed by dev.ts before tsx starts).
+      // Wait for the watching banner (printed by dev.ts before tsx starts).
       const watching = await waitFor(
         () => devOut,
-        (o) => o.includes("Watching for changes"),
+        (o) => o.includes("Ctrl+C to stop"),
         20_000,
       )
-      expect(watching, '"Watching for changes" must appear in dev output').toBe(
-        true,
-      )
+      expect(watching, "watching banner must appear in dev output").toBe(true)
 
       // Capture the full tree (now includes the spawned tsx watch child).
       if (devProc.pid) {

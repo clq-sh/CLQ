@@ -37,7 +37,15 @@
       }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist/index.*",
+    "dist/inspect.*",
+    "dist/config.*",
+    "dist/types-*",
+    "dist/chunk-*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",

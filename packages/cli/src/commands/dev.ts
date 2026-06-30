@@ -31,7 +31,13 @@ export function registerDevCommand(cli: CAC): void {
         return
       }
 
-      console.log("Watching for changes...")
+      console.log(`\nWatching ${entry} (Ctrl+C to stop)\n`)
+      console.log(
+        "  Test interactively:  clq inspect  (run in another terminal)",
+      )
+      console.log(
+        "  This is a stdio MCP server — connect via an MCP client to use it.\n",
+      )
       const child = execSafe("tsx", ["watch", entry], {
         stdio: "inherit",
         cwd: root,

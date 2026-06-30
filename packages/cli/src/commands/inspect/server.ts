@@ -129,8 +129,19 @@ export async function startInspectServer(opts: {
       nl = stdoutBuf.indexOf("\n")
     }
   })
-  // Drain stderr so the child never blocks on a full pipe; not parsed.
-  child.stderr?.on("data", () => {})
+  let stderrOutput = ""
+  child.stderr?.setEncoding("utf8")
+  child.stderr?.on("data", (chunk: string) => {
+    stderrOutput += chunk
+  })
+
+  let childExited = false
+  let childExitCode: number | null = null
+  child.on("exit", (code) => {
+    childExited = true
+    childExitCode = code
+    resolveRegistered()
+  })
 
   function callTool(
     name: string,
@@ -282,6 +293,18 @@ export async function startInspectServer(opts: {
   boundPort = port
 
   await Promise.race([registeredPromise, sleep(20_000)])
+
+  if (childExited && registeredTools.length === 0) {
+    await new Promise<void>((r) => server.close(() => r()))
+    const detail = redactSecrets(stderrOutput.trim()) as string
+    throw new Error(
+      [
+        `Project process exited with code ${childExitCode ?? "unknown"} before registering tools.`,
+        detail ? `\nStderr:\n${detail}` : "",
+        "\nCheck that pnpm build succeeded and src/index.ts runs without errors.",
+      ].join(""),
+    )
+  }
 
   const close = async (): Promise<void> => {
     await new Promise<void>((resolve) => server.close(() => resolve()))

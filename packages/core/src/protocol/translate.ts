@@ -33,9 +33,13 @@ export async function dispatchToolCall(
 ): Promise<MCPCallResult> {
   const tool = tools.find((t) => t.name === name)
   if (!tool) {
+    const notFound = errors.toolNotFound(name)
+    const parts: string[] = [notFound.message]
+    if (notFound.cause) parts.push(`Cause: ${notFound.cause}`)
+    if (notFound.fix) parts.push(`Fix: ${notFound.fix}`)
     return {
       isError: true,
-      content: [{ type: "text", text: errors.toolNotFound(name).message }],
+      content: [{ type: "text", text: parts.join("\n") }],
     }
   }
 
@@ -44,7 +48,13 @@ export async function dispatchToolCall(
     return { content: [{ type: "text", text: JSON.stringify(result) }] }
   } catch (err) {
     if (err instanceof ColloquialErrorImpl) {
-      return { isError: true, content: [{ type: "text", text: err.message }] }
+      const parts: string[] = [err.message]
+      if (err.cause) parts.push(`Cause: ${err.cause}`)
+      if (err.fix) parts.push(`Fix: ${err.fix}`)
+      return {
+        isError: true,
+        content: [{ type: "text", text: parts.join("\n") }],
+      }
     }
     throw err
   }

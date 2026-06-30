@@ -242,6 +242,29 @@ describe("clq inspect backend (two-process, security)", () => {
     expect(ok.status).toBe(200)
   }, 40_000)
 
+  test("child crash before tool registration rejects within 5 s with actionable error", async () => {
+    fs.writeFileSync(
+      path.join(projectDir, "src", "index.ts"),
+      'throw new Error("startup crash")\n',
+    )
+
+    const start = Date.now()
+    let caughtError: Error | undefined
+    try {
+      inspector = await startInspectServer({ root: projectDir })
+    } catch (err) {
+      caughtError = err as Error
+    }
+    const elapsed = Date.now() - start
+
+    expect(caughtError).toBeDefined()
+    expect(elapsed).toBeLessThan(5_000)
+    expect(caughtError?.message).toContain("exited")
+    expect(caughtError?.message).toContain("build")
+    // redactSecrets is applied to the stderr detail; "startup crash" is not a
+    // secret-named key so it passes through unchanged in this specific case.
+  }, 40_000)
+
   test("a busy port causes a clean increment, not a throw", async () => {
     // Occupy a port, then ask the inspector to start on it.
     const busyPort = await new Promise<number>((resolvePort) => {

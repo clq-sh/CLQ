@@ -219,7 +219,7 @@ describe("clq dev (built binary, real tsx watch)", () => {
     const watching = await waitFor(
       () => out,
       (o) =>
-        o.includes("Watching for changes") &&
+        o.includes("Ctrl+C to stop") &&
         countOccurrences(o, "DEV_TEST_RUN") >= 1,
       15_000,
     )
