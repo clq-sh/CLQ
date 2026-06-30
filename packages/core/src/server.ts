@@ -1,4 +1,5 @@
 import { errors } from "./errors.js"
+import { startInspectReporter } from "./inspect.js"
 import { createMCPStdioDriver } from "./protocol/mcp-stdio-driver.js"
 import type {
   ColloquialDriver,
@@ -34,7 +35,6 @@ export function createServer(config: ColloquialServerConfig) {
       // Report the tool list over stdio and skip the MCP server — the inspector parent
       // holds the only listener. User code never needs to know this env var exists.
       if (process.env.CLQ_INSPECT_REPORT) {
-        const { startInspectReporter } = await import("./inspect.js")
         startInspectReporter(tools)
         return {
           name: "inspect-reporter",
