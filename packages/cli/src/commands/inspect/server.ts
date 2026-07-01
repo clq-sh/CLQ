@@ -226,10 +226,13 @@ export async function startInspectServer(opts: {
       return
     }
 
-    // SECURITY: Origin is checked unconditionally, before anything else. A wrong-origin
-    // request is rejected here and never reaches token validation, so it cannot even
-    // learn whether a token would have been accepted.
-    if (req.headers.origin !== expectedOrigin) {
+    // SECURITY: If Origin is present and wrong, reject immediately before token logic.
+    // Browsers omit Origin on same-origin GET fetches, so absence is allowed — the
+    // token check below is the actual secret gate for those requests.
+    if (
+      req.headers.origin !== undefined &&
+      req.headers.origin !== expectedOrigin
+    ) {
       sendJson(res, 403, { error: "Forbidden: invalid origin." })
       return
     }

@@ -180,6 +180,20 @@ describe("clq inspect backend (two-process, security)", () => {
     expect(res.status).toBe(403)
   }, 40_000)
 
+  test("no Origin header + valid token is accepted (browser same-origin fetch)", async () => {
+    inspector = await startInspectServer({ root: projectDir })
+    const res = await fetch(`${origin(inspector.port)}/api/tools`, {
+      headers: { "x-clq-token": inspector.token },
+    })
+    expect(res.status).toBe(200)
+  }, 40_000)
+
+  test("no Origin header + no token is rejected with 401", async () => {
+    inspector = await startInspectServer({ root: projectDir })
+    const res = await fetch(`${origin(inspector.port)}/api/tools`)
+    expect(res.status).toBe(401)
+  }, 40_000)
+
   test("correct Origin but no token is rejected with 401", async () => {
     inspector = await startInspectServer({ root: projectDir })
     const res = await fetch(`${origin(inspector.port)}/api/tools`, {
