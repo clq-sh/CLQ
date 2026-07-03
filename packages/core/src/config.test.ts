@@ -151,7 +151,7 @@ describe("loadConfig", () => {
     // Neither the raw value nor any length info should be in any field.
     for (const text of [e.message, e.cause ?? "", e.fix ?? ""]) {
       expect(text).not.toContain(SECRET_VALUE)
-      expect(text).not.toContain(`length`)
+      expect(text).not.toContain("length")
     }
   })
 

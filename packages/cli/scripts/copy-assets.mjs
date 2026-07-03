@@ -22,11 +22,7 @@ if (existsSync(corePackagePath)) {
 
   if (templateVersion !== coreVersion) {
     console.error(
-      `\nBuild error: version drift detected.\n` +
-        `  Template pins @clq-sh/core@${templateVersion}\n` +
-        `  Actual core version is        ${coreVersion}\n\n` +
-        `Fix: update packages/cli/src/templates/default/package.json ` +
-        `to "@clq-sh/core": "${coreVersion}", then rebuild.\n`,
+      `\nBuild error: version drift detected.\n  Template pins @clq-sh/core@${templateVersion}\n  Actual core version is        ${coreVersion}\n\nFix: update packages/cli/src/templates/default/package.json to "@clq-sh/core": "${coreVersion}", then rebuild.\n`,
     )
     process.exit(1)
   }

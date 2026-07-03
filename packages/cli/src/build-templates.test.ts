@@ -127,7 +127,7 @@ describe("version drift guard (coverage gap #11 from qa-report/REPORT.md)", () =
         "@clq-sh/core": "0.0.0-version-drift-test",
       },
     }
-    fs.writeFileSync(templatePath, JSON.stringify(badPkg, null, 2) + "\n")
+    fs.writeFileSync(templatePath, `${JSON.stringify(badPkg, null, 2)}\n`)
 
     let threw = false
     let errorOutput = ""
