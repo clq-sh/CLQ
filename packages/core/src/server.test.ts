@@ -519,9 +519,7 @@ describe("applyMiddleware edge cases (MIDDLEWARE.md review)", () => {
       name: "result-replacer",
       // TypeScript enforces `Promise<void>` return type, but at runtime we can
       // return a value. The framework must ignore it regardless.
-      after: (async (_ctx, _result) => {
-        return "attempted-replacement"
-      }) as ColloquialMiddleware["after"],
+      after: someFn as unknown as (ctx: ColloquialContext, result: unknown) => Promise<void>,
     }
     const tool = defineTool({
       name: "t",
