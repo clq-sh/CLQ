@@ -128,9 +128,7 @@ describe("redactSecrets — word-boundary anchoring: bare secret terms still red
     //["tokenCount", "SHOULD-NOT-REACH-THIS-ASSERTION"], // excluded — should NOT redact
     //["jwtAlgorithm", "SHOULD-NOT-REACH-THIS-ASSERTION"], // excluded — should NOT redact
   ]
-    // Drop the two non-secret ones — they're tested above; include only true secrets
-    //.filter(([k]) => !["tokenCount", "jwtAlgorithm"].includes(k))
-
+  
   for (const [key, val] of boundarySensitiveKeys) {
     test(`still redacts key "${key}" (true secret term)`, () => {
       const result = redactSecrets({ [key]: val }) as Record<string, unknown>
