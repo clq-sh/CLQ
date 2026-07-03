@@ -125,11 +125,11 @@ describe("redactSecrets — word-boundary anchoring: bare secret terms still red
     ["session_id", "sess-abc-123"],
     ["apiKey", "ak-12345"],
     ["api_key", "ak-12345"],
-    ["tokenCount", "SHOULD-NOT-REACH-THIS-ASSERTION"], // excluded — should NOT redact
-    ["jwtAlgorithm", "SHOULD-NOT-REACH-THIS-ASSERTION"], // excluded — should NOT redact
+    //["tokenCount", "SHOULD-NOT-REACH-THIS-ASSERTION"], // excluded — should NOT redact
+    //["jwtAlgorithm", "SHOULD-NOT-REACH-THIS-ASSERTION"], // excluded — should NOT redact
   ]
     // Drop the two non-secret ones — they're tested above; include only true secrets
-    .filter(([k]) => !["tokenCount", "jwtAlgorithm"].includes(k))
+    //.filter(([k]) => !["tokenCount", "jwtAlgorithm"].includes(k))
 
   for (const [key, val] of boundarySensitiveKeys) {
     test(`still redacts key "${key}" (true secret term)`, () => {
