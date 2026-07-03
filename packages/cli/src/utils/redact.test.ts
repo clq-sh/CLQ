@@ -8,9 +8,20 @@ import { redactSecrets } from "./redact.js"
 const LEAK_VALUE = "SHOULD-NOT-APPEAR-IN-OUTPUT"
 
 describe("redactSecrets — original patterns still redacted", () => {
-  for (const key of ["secret", "token", "password", "apiKey", "api_key", "API_KEY", "TOKEN"]) {
+  for (const key of [
+    "secret",
+    "token",
+    "password",
+    "apiKey",
+    "api_key",
+    "API_KEY",
+    "TOKEN",
+  ]) {
     test(`redacts key "${key}"`, () => {
-      const result = redactSecrets({ [key]: LEAK_VALUE }) as Record<string, unknown>
+      const result = redactSecrets({ [key]: LEAK_VALUE }) as Record<
+        string,
+        unknown
+      >
       expect(result[key]).toBe("[REDACTED]")
       expect(JSON.stringify(result)).not.toContain(LEAK_VALUE)
     })
@@ -44,8 +55,13 @@ describe("redactSecrets — new patterns from Finding 2 are now redacted", () =>
 
   for (const [key, description] of newlyCoveredKeys) {
     test(`redacts key "${key}" (${description})`, () => {
-      const result = redactSecrets({ [key]: LEAK_VALUE }) as Record<string, unknown>
-      expect(result[key], `key "${key}" must be "[REDACTED]"`).toBe("[REDACTED]")
+      const result = redactSecrets({ [key]: LEAK_VALUE }) as Record<
+        string,
+        unknown
+      >
+      expect(result[key], `key "${key}" must be "[REDACTED]"`).toBe(
+        "[REDACTED]",
+      )
       expect(
         JSON.stringify(result),
         `raw value must not appear in serialized result for key "${key}"`,
@@ -55,7 +71,15 @@ describe("redactSecrets — new patterns from Finding 2 are now redacted", () =>
 })
 
 describe("redactSecrets — non-secret keys still pass through", () => {
-  for (const key of ["name", "status", "ok", "count", "url", "timestamp", "userId"]) {
+  for (const key of [
+    "name",
+    "status",
+    "ok",
+    "count",
+    "url",
+    "timestamp",
+    "userId",
+  ]) {
     test(`does not redact key "${key}"`, () => {
       const val = "non-secret-value"
       const result = redactSecrets({ [key]: val }) as Record<string, unknown>
@@ -134,8 +158,13 @@ describe("redactSecrets — prefixed compounds MUST be redacted (FIXD2 regressio
 
   for (const [key, description] of prefixedCompoundKeys) {
     test(`redacts prefixed compound key "${key}" (${description})`, () => {
-      const result = redactSecrets({ [key]: LEAK_VALUE }) as Record<string, unknown>
-      expect(result[key], `key "${key}" must be "[REDACTED]"`).toBe("[REDACTED]")
+      const result = redactSecrets({ [key]: LEAK_VALUE }) as Record<
+        string,
+        unknown
+      >
+      expect(result[key], `key "${key}" must be "[REDACTED]"`).toBe(
+        "[REDACTED]",
+      )
       expect(JSON.stringify(result)).not.toContain(LEAK_VALUE)
     })
   }
@@ -158,7 +187,9 @@ describe("redactSecrets — structural behavior", () => {
   test("recurses into arrays", () => {
     const input = [{ authorization: "Bearer sk-..." }, { name: "ok" }]
     const result = redactSecrets(input) as typeof input
-    expect((result[0] as Record<string, unknown>).authorization).toBe("[REDACTED]")
+    expect((result[0] as Record<string, unknown>).authorization).toBe(
+      "[REDACTED]",
+    )
     expect((result[1] as Record<string, unknown>).name).toBe("ok")
   })
 

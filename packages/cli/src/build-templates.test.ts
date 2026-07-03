@@ -139,8 +139,7 @@ describe("version drift guard (coverage gap #11 from qa-report/REPORT.md)", () =
     } catch (err) {
       threw = true
       const e = err as { stderr?: Buffer; stdout?: Buffer }
-      errorOutput =
-        (e.stderr?.toString() ?? "") + (e.stdout?.toString() ?? "")
+      errorOutput = (e.stderr?.toString() ?? "") + (e.stdout?.toString() ?? "")
     } finally {
       // Always restore — even if an assertion fails.
       fs.writeFileSync(templatePath, original)

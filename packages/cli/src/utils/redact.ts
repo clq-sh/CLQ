@@ -24,15 +24,16 @@ const SINGLE_SECRET_WORDS = new Set([
 // → suffix "api"+"key"). Set to false for terms that are identifiers rather
 // than direct credential values, to avoid false positives like "parentSessionId"
 // while still matching the exact key "sessionId" / "session_id".
-const COMPOUND_SECRET_TERMS: ReadonlyArray<readonly [string, string, boolean]> = [
-  ["api", "key", true],
-  ["private", "key", true],
-  ["access", "key", true],
-  ["signing", "key", true],
-  ["client", "secret", true],
-  ["refresh", "token", true],
-  ["session", "id", false], // exact match only: sessionId / session_id
-]
+const COMPOUND_SECRET_TERMS: ReadonlyArray<readonly [string, string, boolean]> =
+  [
+    ["api", "key", true],
+    ["private", "key", true],
+    ["access", "key", true],
+    ["signing", "key", true],
+    ["client", "secret", true],
+    ["refresh", "token", true],
+    ["session", "id", false], // exact match only: sessionId / session_id
+  ]
 
 /**
  * Split a key into lowercase word segments, handling both camelCase transitions

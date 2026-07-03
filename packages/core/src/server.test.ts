@@ -137,7 +137,8 @@ describe("createServer", () => {
     await server.start()
 
     const driver = getDriverSpies()
-    const passedTools = driver?.start.mock.calls[0][0].tools as ColloquialToolDefinition[]
+    const passedTools = driver?.start.mock.calls[0][0]
+      .tools as ColloquialToolDefinition[]
     expect(passedTools).toHaveLength(1)
 
     // With middleware registered, the passed tool must be a WRAPPED copy (not original).
@@ -360,7 +361,9 @@ describe("applyMiddleware edge cases (MIDDLEWARE.md review)", () => {
   // ── after hook failure: logged, result preserved (regression for FIX2) ───
 
   test("after hook throws: error is logged via console.error and original result is returned (FIX2 regression)", async () => {
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const consoleSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
     const afterError = new Error("after-hook-logged-error")
 
     const mw: ColloquialMiddleware = {

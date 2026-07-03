@@ -333,7 +333,10 @@ describe("clq inspect backend (two-process, security)", () => {
     const res = await fetch(`${base}/api/call`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ name: "getCredentials", args: { userId: "test" } }),
+      body: JSON.stringify({
+        name: "getCredentials",
+        args: { userId: "test" },
+      }),
     })
     expect(res.status).toBe(200)
 
@@ -341,7 +344,10 @@ describe("clq inspect backend (two-process, security)", () => {
     // The raw secret value must not appear anywhere in the response.
     expect(text).not.toContain(FAKE_SECRET)
     // All credential-named fields must be "[REDACTED]".
-    const body = JSON.parse(text) as { ok: boolean; result: Record<string, unknown> }
+    const body = JSON.parse(text) as {
+      ok: boolean
+      result: Record<string, unknown>
+    }
     expect(body.ok).toBe(true)
     const result = body.result
     const newlyCoveredKeys = [
@@ -359,7 +365,9 @@ describe("clq inspect backend (two-process, security)", () => {
       "cookie",
     ]
     for (const key of newlyCoveredKeys) {
-      expect(result[key], `key "${key}" must be "[REDACTED]"`).toBe("[REDACTED]")
+      expect(result[key], `key "${key}" must be "[REDACTED]"`).toBe(
+        "[REDACTED]",
+      )
     }
     // A field with a non-secret name must pass through.
     expect(result.safeField).toBe("this-should-not-be-redacted")
@@ -378,7 +386,10 @@ describe("clq inspect backend (two-process, security)", () => {
     await fetch(`${base}/api/call`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ name: "getCredentials", args: { userId: "log-test" } }),
+      body: JSON.stringify({
+        name: "getCredentials",
+        args: { userId: "log-test" },
+      }),
     })
 
     const logsRes = await fetch(`${base}/api/logs`, {
@@ -389,7 +400,11 @@ describe("clq inspect backend (two-process, security)", () => {
     // The raw secret value must never appear in log output.
     expect(logsText).not.toContain(FAKE_SECRET)
     // Spot-check a few of the new field names.
-    const logs = (JSON.parse(logsText) as { logs: Array<{ result: Record<string, unknown> }> }).logs
+    const logs = (
+      JSON.parse(logsText) as {
+        logs: Array<{ result: Record<string, unknown> }>
+      }
+    ).logs
     expect(logs.length).toBeGreaterThanOrEqual(1)
     const last = logs[logs.length - 1]
     expect(last.result.authorization).toBe("[REDACTED]")
@@ -411,7 +426,10 @@ describe("clq inspect backend (two-process, security)", () => {
 
     // Forged origin with valid token → 403.
     const res403 = await fetch(`${base}/api/logs`, {
-      headers: { origin: "http://evil.example.com", "x-clq-token": inspector.token },
+      headers: {
+        origin: "http://evil.example.com",
+        "x-clq-token": inspector.token,
+      },
     })
     expect(res403.status).toBe(403)
 
@@ -442,7 +460,10 @@ describe("clq inspect backend (two-process, security)", () => {
       await fetch(`${base}/api/call`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ name: "getSecret", args: { apiKey: `call-${i}` } }),
+        body: JSON.stringify({
+          name: "getSecret",
+          args: { apiKey: `call-${i}` },
+        }),
       })
     }
 
