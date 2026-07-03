@@ -2,6 +2,7 @@ import { errors } from "./errors.js"
 import { startInspectReporter } from "./inspect.js"
 import { createMCPStdioDriver } from "./protocol/mcp-stdio-driver.js"
 import type {
+  ColloquialContext,
   ColloquialDriver,
   ColloquialMiddleware,
   ColloquialServerConfig,
@@ -11,8 +12,38 @@ import type {
 type StartOptions = { driver?: "mcp" | "auto"; transport?: "stdio" }
 
 /**
- * Creates a chainable server. Middleware registered with .use() is stored but not yet
- * executed around tool calls — that behavior is reserved for a future release.
+ * Wrap each tool's handler with registered middleware before/after hooks.
+ * Returns the original array unchanged (same object references) when no
+ * middleware is registered — this preserves object identity in tests and
+ * avoids unnecessary allocation on the happy path.
+ */
+function applyMiddleware(
+  tools: ColloquialToolDefinition[],
+  middleware: ColloquialMiddleware[],
+): ColloquialToolDefinition[] {
+  if (middleware.length === 0) return tools
+  return tools.map((tool) => ({
+    ...tool,
+    handler: async (args: { input: unknown; ctx: ColloquialContext }) => {
+      for (const mw of middleware) {
+        await mw.before?.(args.ctx)
+      }
+      const result = await tool.handler(args)
+      for (const mw of [...middleware].reverse()) {
+        try {
+          await mw.after?.(args.ctx, result)
+        } catch (err) {
+          console.error(err)
+        }
+      }
+      return result
+    },
+  }))
+}
+
+/**
+ * Creates a chainable server. Middleware registered with .use() is executed
+ * as before/after hooks around every tool call when the MCP driver is started.
  */
 export function createServer(config: ColloquialServerConfig) {
   const tools: ColloquialToolDefinition[] = []
@@ -60,7 +91,7 @@ export function createServer(config: ColloquialServerConfig) {
         name: config.name,
         version: config.version,
       })
-      await driver.start({ tools })
+      await driver.start({ tools: applyMiddleware(tools, middleware) })
       return driver // returned so caller can call .stop() in tests
     },
   }

@@ -38,7 +38,30 @@ const getSecret = defineTool({
   handler: async () => ({ apiKey: "${FAKE_SECRET}", ok: true }),
 })
 
-export const tools = [getSecret]
+// Finding 2 fixture: returns values under credential-named keys that the
+// original SECRET_KEY_PATTERN missed. Used by the extended-redaction tests below.
+const getCredentials = defineTool({
+  name: "getCredentials",
+  description: "Return values under credential-named fields for redaction testing.",
+  input: z.object({ userId: z.string() }),
+  handler: async () => ({
+    authorization: "${FAKE_SECRET}",
+    credential: "${FAKE_SECRET}",
+    credentials: "${FAKE_SECRET}",
+    access_key: "${FAKE_SECRET}",
+    private_key: "${FAKE_SECRET}",
+    bearer: "${FAKE_SECRET}",
+    jwt: "${FAKE_SECRET}",
+    passphrase: "${FAKE_SECRET}",
+    session_id: "${FAKE_SECRET}",
+    refresh_token: "${FAKE_SECRET}",
+    signing_key: "${FAKE_SECRET}",
+    cookie: "${FAKE_SECRET}",
+    safeField: "this-should-not-be-redacted",
+  }),
+})
+
+export const tools = [getSecret, getCredentials]
 const server = createServer({ name: "redact-fixture", version: "0.1.0" })
 for (const t of tools) server.tool(t)
 
@@ -292,4 +315,144 @@ describe("clq inspect backend (two-process, security)", () => {
     expect(extra.port).not.toBe(busyPort)
     expect(extra.port).toBeGreaterThan(busyPort)
   }, 40_000)
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Finding 2 regression: credential-named fields are redacted in /api/call
+  // and /api/logs (extended SECRET_KEY_PATTERN coverage).
+  // ─────────────────────────────────────────────────────────────────────────
+
+  test("credential-named response fields are redacted in /api/call (Finding 2 regression)", async () => {
+    inspector = await startInspectServer({ root: projectDir })
+    const base = `http://127.0.0.1:${inspector.port}`
+    const headers = {
+      origin: base,
+      "x-clq-token": inspector.token,
+      "content-type": "application/json",
+    }
+
+    const res = await fetch(`${base}/api/call`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: "getCredentials", args: { userId: "test" } }),
+    })
+    expect(res.status).toBe(200)
+
+    const text = await res.text()
+    // The raw secret value must not appear anywhere in the response.
+    expect(text).not.toContain(FAKE_SECRET)
+    // All credential-named fields must be "[REDACTED]".
+    const body = JSON.parse(text) as { ok: boolean; result: Record<string, unknown> }
+    expect(body.ok).toBe(true)
+    const result = body.result
+    const newlyCoveredKeys = [
+      "authorization",
+      "credential",
+      "credentials",
+      "access_key",
+      "private_key",
+      "bearer",
+      "jwt",
+      "passphrase",
+      "session_id",
+      "refresh_token",
+      "signing_key",
+      "cookie",
+    ]
+    for (const key of newlyCoveredKeys) {
+      expect(result[key], `key "${key}" must be "[REDACTED]"`).toBe("[REDACTED]")
+    }
+    // A field with a non-secret name must pass through.
+    expect(result.safeField).toBe("this-should-not-be-redacted")
+  }, 40_000)
+
+  test("credential-named fields are redacted in /api/logs after a call (Finding 2 regression)", async () => {
+    inspector = await startInspectServer({ root: projectDir })
+    const base = `http://127.0.0.1:${inspector.port}`
+    const headers = {
+      origin: base,
+      "x-clq-token": inspector.token,
+      "content-type": "application/json",
+    }
+
+    // Make one call to populate logs.
+    await fetch(`${base}/api/call`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ name: "getCredentials", args: { userId: "log-test" } }),
+    })
+
+    const logsRes = await fetch(`${base}/api/logs`, {
+      headers: { origin: base, "x-clq-token": inspector.token },
+    })
+    expect(logsRes.status).toBe(200)
+    const logsText = await logsRes.text()
+    // The raw secret value must never appear in log output.
+    expect(logsText).not.toContain(FAKE_SECRET)
+    // Spot-check a few of the new field names.
+    const logs = (JSON.parse(logsText) as { logs: Array<{ result: Record<string, unknown> }> }).logs
+    expect(logs.length).toBeGreaterThanOrEqual(1)
+    const last = logs[logs.length - 1]
+    expect(last.result.authorization).toBe("[REDACTED]")
+    expect(last.result.access_key).toBe("[REDACTED]")
+    expect(last.result.bearer).toBe("[REDACTED]")
+  }, 40_000)
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Coverage gap #4: /api/logs auth gate (report gap, not a new vulnerability).
+  // ─────────────────────────────────────────────────────────────────────────
+
+  test("/api/logs enforces auth: no token → 401, wrong origin → 403, valid → 200", async () => {
+    inspector = await startInspectServer({ root: projectDir })
+    const base = `http://127.0.0.1:${inspector.port}`
+
+    // No token at all → 401.
+    const res401 = await fetch(`${base}/api/logs`)
+    expect(res401.status).toBe(401)
+
+    // Forged origin with valid token → 403.
+    const res403 = await fetch(`${base}/api/logs`, {
+      headers: { origin: "http://evil.example.com", "x-clq-token": inspector.token },
+    })
+    expect(res403.status).toBe(403)
+
+    // No origin + valid token (same-origin fetch pattern) → 200.
+    const res200 = await fetch(`${base}/api/logs`, {
+      headers: { "x-clq-token": inspector.token },
+    })
+    expect(res200.status).toBe(200)
+    const body = (await res200.json()) as { logs: unknown[] }
+    expect(Array.isArray(body.logs)).toBe(true)
+  }, 40_000)
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Coverage gap #8: 200-entry log cap evicts oldest entries.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  test("call log is capped at 200 entries and oldest entries are evicted first", async () => {
+    inspector = await startInspectServer({ root: projectDir })
+    const base = `http://127.0.0.1:${inspector.port}`
+    const headers = {
+      origin: base,
+      "x-clq-token": inspector.token,
+      "content-type": "application/json",
+    }
+
+    // Make 205 successful calls. Each increments the log; once >200, oldest is shifted.
+    for (let i = 0; i < 205; i++) {
+      await fetch(`${base}/api/call`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ name: "getSecret", args: { apiKey: `call-${i}` } }),
+      })
+    }
+
+    const logsRes = await fetch(`${base}/api/logs`, {
+      headers: { "x-clq-token": inspector.token },
+    })
+    expect(logsRes.status).toBe(200)
+    const { logs } = (await logsRes.json()) as { logs: unknown[] }
+
+    // Cap must be enforced at exactly 200.
+    expect(logs).toHaveLength(200)
+  }, 60_000)
 })

@@ -105,6 +105,29 @@ describe("clq doctor (built CLI, spawned)", () => {
     expect(out).toContain("The upstream service key.")
   }, 60_000)
 
+  test("a wrong-type env var exits non-zero and the raw secret value never appears in stdout (Finding 1 regression)", async () => {
+    // Reproduces qa-report/REPORT.md Finding 1 via the full doctor pipeline:
+    // SERVICE_PORT declared as type:"number", set to a secret-shaped string → must not leak.
+    const SECRET_VALUE = "sk-TYPE-MISMATCH-SECRET-9876"
+    workDir = scaffold({
+      envBlock: `{ SERVICE_PORT: { type: "number", description: "Port number for the service." } }`,
+    })
+    const result = await execSafe("node", [cliEntry, "doctor"], {
+      cwd: workDir,
+      env: { ...process.env, SERVICE_PORT: SECRET_VALUE },
+      preferLocal: true,
+      localDir: here,
+      reject: false,
+    })
+    expect(result.exitCode).not.toBe(0)
+    const out = String(result.stdout)
+    expect(out).toContain("Config check failed")
+    // The error must name the var and explain what went wrong.
+    expect(out).toContain("SERVICE_PORT")
+    // The raw secret value must not appear anywhere in stdout.
+    expect(out).not.toContain(SECRET_VALUE)
+  }, 60_000)
+
   test("an injected secret exits non-zero and the raw value never appears in stdout", async () => {
     workDir = scaffold({ secretFile: true })
     const result = await runDoctor(workDir)

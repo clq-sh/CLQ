@@ -42,9 +42,15 @@ export function loadConfig(
     if (decl.type === "number") {
       const n = Number(raw)
       if (Number.isNaN(n)) {
+        // Never embed the raw value — treat all env values as sensitive by default.
+        // When secret: true, omit even the length to prevent fingerprinting.
+        // See qa-report/REPORT.md Finding 1 for the audit that produced this fix.
+        const shape = decl.secret
+          ? "a non-numeric value"
+          : `a non-numeric string of length ${raw.length}`
         throw errors.missingEnvVar(
           key,
-          `${decl.description} (expected a number, got "${raw}")`,
+          `${decl.description} (expected a number, got ${shape})`,
         )
       }
       resolved[key] = n

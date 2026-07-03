@@ -108,3 +108,50 @@ describe("dist/public matches src/commands/inspect/public after build", () => {
     expect(distHtml).toBe(srcHtml)
   })
 })
+
+describe("version drift guard (coverage gap #11 from qa-report/REPORT.md)", () => {
+  test("copy-assets.mjs fails with a clear message when template @clq-sh/core version mismatches core", () => {
+    const templatePath = path.join(
+      pkgRoot,
+      "src/templates/default/package.json",
+    )
+    const original = fs.readFileSync(templatePath, "utf8")
+    const pkg = JSON.parse(original) as {
+      dependencies: Record<string, string>
+    }
+    // Inject a deliberately wrong version.
+    const badPkg = {
+      ...pkg,
+      dependencies: {
+        ...pkg.dependencies,
+        "@clq-sh/core": "0.0.0-version-drift-test",
+      },
+    }
+    fs.writeFileSync(templatePath, JSON.stringify(badPkg, null, 2) + "\n")
+
+    let threw = false
+    let errorOutput = ""
+    try {
+      execSync("node scripts/copy-assets.mjs", {
+        cwd: pkgRoot,
+        stdio: "pipe",
+      })
+    } catch (err) {
+      threw = true
+      const e = err as { stderr?: Buffer; stdout?: Buffer }
+      errorOutput =
+        (e.stderr?.toString() ?? "") + (e.stdout?.toString() ?? "")
+    } finally {
+      // Always restore — even if an assertion fails.
+      fs.writeFileSync(templatePath, original)
+    }
+
+    expect(
+      threw,
+      "copy-assets.mjs must exit non-zero when versions mismatch",
+    ).toBe(true)
+    expect(errorOutput).toContain("version drift")
+    expect(errorOutput).toContain("0.0.0-version-drift-test")
+    expect(errorOutput).toContain("@clq-sh/core")
+  })
+})

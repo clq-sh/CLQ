@@ -95,6 +95,66 @@ describe("loadConfig", () => {
     expect(e.cause).toContain("expected a number")
   })
 
+  test("number type-mismatch error never includes the raw value — even a secret-shaped one (Finding 1 regression)", () => {
+    // Reproduces qa-report/REPORT.md Finding 1 exactly:
+    // a secret-shaped value set for a number-typed var must never appear in any error field.
+    const SECRET_VALUE = "sk-REAL-SECRET-12345678"
+    process.env.CLQ_PORT = SECRET_VALUE
+    let caught: unknown
+    try {
+      loadConfig({
+        name: "svc",
+        version: "1.0.0",
+        env: { CLQ_PORT: { type: "number", description: "Port number." } },
+      })
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeInstanceOf(ColloquialErrorImpl)
+    const e = caught as ColloquialErrorImpl
+    expect(e.code).toBe("CONFIG_MISSING_ENV_VAR")
+    // Must still be actionable: names the var and expected type.
+    expect(e.message).toContain("CLQ_PORT")
+    expect(e.cause).toContain("expected a number")
+    // The raw secret value must NEVER appear in any error field.
+    for (const text of [e.message, e.cause ?? "", e.fix ?? ""]) {
+      expect(text).not.toContain(SECRET_VALUE)
+    }
+    // Length info is safe to include for non-secret vars, so check it's there.
+    expect(e.cause).toContain(`length ${SECRET_VALUE.length}`)
+  })
+
+  test("secret:true on a number var omits even the string length from the error (Finding 3)", () => {
+    // When a var is explicitly marked secret: true, no shape or length info should
+    // appear — only the expected type. This prevents fingerprinting via length.
+    const SECRET_VALUE = "sk-ABCDE-12345"
+    process.env.CLQ_SECRET = SECRET_VALUE
+    let caught: unknown
+    try {
+      loadConfig({
+        name: "svc",
+        version: "1.0.0",
+        env: {
+          CLQ_SECRET: {
+            type: "number",
+            description: "Secret numeric config.",
+            secret: true,
+          },
+        },
+      })
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeInstanceOf(ColloquialErrorImpl)
+    const e = caught as ColloquialErrorImpl
+    expect(e.cause).toContain("expected a number")
+    // Neither the raw value nor any length info should be in any field.
+    for (const text of [e.message, e.cause ?? "", e.fix ?? ""]) {
+      expect(text).not.toContain(SECRET_VALUE)
+      expect(text).not.toContain(`length`)
+    }
+  })
+
   test("number var with a valid raw value resolves to a number", () => {
     process.env.CLQ_PORT = "3000"
     const resolved = loadConfig({
