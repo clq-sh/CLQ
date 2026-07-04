@@ -13,7 +13,7 @@ const getWeather = defineTool({
 createServer({ name: "my-server", version: "1.0.0" }).tool(getWeather).start()
 ```
 
-That's a working MCP server.
+That's a working MCP server. CLQ handles the protocol, transport, validation, and error formatting — you write the tools.
 
 ---
 
@@ -36,23 +36,11 @@ MCP is the protocol that lets AI assistants like Claude call external tools — 
 
 ---
 
-## Why CLQ?
-
-| Without CLQ | With CLQ |
-|---|---|
-| Read the MCP JSON-RPC spec | Never |
-| Wire up stdio transport manually | Never |
-| Write your own input validation | Never |
-| Debug with raw JSON logs | `clq inspect` |
-| Catch secrets before git push | `clq doctor` |
-
----
-
 ## Core API
 
 ### `defineTool`
 
-Defines a typed, named tool with Zod input/output schemas and an async handler.
+Defines a typed, named tool with Zod input/output schemas and an async handler. The `output` schema is optional but recommended: it lets agents trust tool responses without re-validating, cutting tokens and tightening feedback loops.
 
 ```typescript
 const getWeather = defineTool({
@@ -67,6 +55,8 @@ const getWeather = defineTool({
 })
 ```
 
+Both boundaries are validated: input is checked before the handler runs; output is checked before the result leaves the framework. A schema mismatch throws a structured `CLQError` — never a raw crash.
+
 ### `createServer`
 
 Registers tools; handles the rest.
@@ -79,7 +69,7 @@ server.start()
 
 ### `defineConfig`
 
-Declares required environment variables — missing vars fail loudly at startup.
+Declares required environment variables — missing vars fail loudly at startup, never silently mid-request.
 
 ```typescript
 // clq.config.ts
@@ -131,6 +121,10 @@ Restart Claude Desktop after editing the config.
 
 ---
 
-> CLQ's Zod output schemas let agents trust tool responses without re-validating — fewer tokens, faster loops.
+## Security & Quality
+
+CLQ underwent a real security audit before the v0.2.0 release. Two confirmed findings were identified and fixed: a **credential leak in `clq doctor`** (a secret env var's raw value appeared in stdout on type mismatch) and a **redaction bypass in `clq inspect`** (the inspector's response sanitizer missed common naming conventions like `authorization`, `bearer`, `jwt`, and `private_key`, allowing tool handlers to leak credentials through the inspector UI). A subsequent word-boundary fix introduced a camelCase regression that was then caught and corrected. The full disclosed trail — original report, fix records, and final verification pass — is in [`qa-report/`](qa-report/README.md). The suite currently passes **211 tests** across 18 test files.
+
+---
 
 MIT — see [LICENSE](LICENSE).
