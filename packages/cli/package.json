@@ -9,15 +9,12 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com",
-    "directory": "packages/cli" 
+    "directory": "packages/cli"
   },
   "bugs": {
     "url": "https://github.com"
   },
   "homepage": "https://github.com",
-  "publishConfig": {
-    "registry": "https://github.com"
-  },
   "scripts": {
     "build": "tsup && node scripts/copy-assets.mjs",
     "test": "vitest run"
