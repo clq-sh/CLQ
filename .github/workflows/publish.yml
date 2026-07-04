@@ -34,17 +34,17 @@ jobs:
       # --- Step A: Deploy to GitHub Packages ---
       - name: Route and Authenticate GitHub Registry
         run: |
-          echo "registry=https://github.com" > ~/.npmrc
-          echo "//://github.com{{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
-          
+          echo "@clq-sh:registry=https://npm.pkg.github.com" > ~/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
+
       - name: Publish all to GitHub Packages
-        run: pnpm -r publish --no-git-checks --registry=https://github.com
+        run: pnpm -r publish --no-git-checks --registry=https://npm.pkg.github.com
 
       # --- Step B: Deploy to Public npm Registry ---
       - name: Route and Authenticate Public npm Registry
         run: |
-          echo "registry=https://npmjs.org" > ~/.npmrc
+          echo "registry=https://registry.npmjs.org/" > ~/.npmrc
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-          
+
       - name: Publish all to Public npm
-        run: pnpm -r publish --access public --no-git-checks --registry=https://npmjs.org
+        run: pnpm -r publish --access public --no-git-checks --registry=https://registry.npmjs.org/
