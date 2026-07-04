@@ -32,19 +32,27 @@ jobs:
         run: pnpm -r run build
 
       # --- Step A: Deploy to GitHub Packages ---
-      - name: Route to GitHub Registry
-        run: |
-          echo "registry=https://github.com" > ~/.npmrc
-          echo "//://github.com{{ secrets.GITHUB_TOKEN }}" >> ~/.npmrc
-          
+      - name: Setup Node.js for GitHub Packages
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@clq-sh'
+
       - name: Publish all to GitHub Packages
         run: pnpm -r publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # --- Step B: Deploy to Public npm Registry ---
-      - name: Route to Public npm Registry
-        run: |
-          echo "registry=https://npmjs.org" > ~/.npmrc
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-          
-      - name: Publish all to Public npm
+      - name: Setup Node.js for public npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@clq-sh'
+
+      - name: Publish all to public npm
         run: pnpm -r publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
