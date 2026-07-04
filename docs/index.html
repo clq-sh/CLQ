@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLQ — build MCP servers without reading the spec</title>
+  <meta name="description" content="CLQ is a TypeScript framework for building MCP servers. Define typed tools, create servers, and get a dev CLI — without touching the MCP protocol yourself." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="index.html">CLQ</a>
+  <div class="nav-links">
+    <a href="index.html" class="active">Home</a>
+    <a href="cli.html">CLI</a>
+    <a href="security.html">Security</a>
+    <a href="changelog.html">Changelog</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/clq-sh/CLQ" class="github-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      GitHub
+    </a>
+    <a href="https://www.npmjs.com/package/@clq-sh/cli" style="color:var(--text-muted);font-size:0.8rem;">npm</a>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <h1>Build MCP servers without reading the spec.</h1>
+    <p class="tagline">CLQ is a TypeScript framework that turns <code>defineTool</code> + <code>server.start()</code> into a fully wired MCP server — protocol, validation, transport, and error formatting handled entirely by the framework.</p>
+
+    <pre><code>import { createServer, defineTool } from "@clq-sh/core"
+import { z } from "zod"
+
+const getWeather = defineTool({
+  name: "get_weather",
+  description: "Get current weather for a city.",
+  input: z.object({ city: z.string() }),
+  handler: async ({ input }) =&gt; ({ temperature: 22, condition: "sunny" }),
+})
+
+createServer({ name: "my-server", version: "1.0.0" }).tool(getWeather).start()</code></pre>
+
+    <p style="color:var(--text-muted);font-size:0.9rem;margin-top:0.5rem;">That's a working MCP server. It handles the JSON-RPC wire protocol, Zod input validation, structured error responses, and stdio transport. You write the tool logic.</p>
+  </section>
+
+  <hr />
+
+  <!-- ── Install ── -->
+  <h2>Install</h2>
+
+  <div class="install-strip">
+    <span class="dollar">$</span>
+    <span>npm install -g @clq-sh/cli</span>
+  </div>
+
+  <div class="terminal">
+    <div><span class="prompt">$ </span><span class="cmd">clq init my-server</span></div>
+    <div><span class="ok">✔</span> Scaffolded my-server</div>
+    <div><span class="prompt">$ </span><span class="cmd">cd my-server &amp;&amp; pnpm install &amp;&amp; pnpm build</span></div>
+    <div><span class="prompt">$ </span><span class="cmd">clq inspect</span></div>
+    <div><span class="ok">✔</span> Inspector running at http://127.0.0.1:7317/?token=…</div>
+  </div>
+
+  <p>Opens a browser UI where you can call your tools, inspect responses, and see call logs — all before connecting to any AI client.</p>
+
+  <hr />
+
+  <!-- ── What is MCP ── -->
+  <h2>What is MCP?</h2>
+
+  <p>MCP (Model Context Protocol) is the standard wire protocol that lets AI assistants like Claude call external tools — APIs, databases, scripts, anything that can run code. It defines how an AI client discovers available tools, sends inputs, and receives structured results. <a href="https://modelcontextprotocol.io">Learn more →</a></p>
+
+  <p><strong>Why does this matter as a developer?</strong> If you want Claude (or any MCP-compatible agent) to call your code, your code needs to speak MCP. That means implementing JSON-RPC over stdio, declaring tool schemas in a specific format, handling the protocol handshake, and formatting errors correctly. CLQ does all of that so you don't have to.</p>
+
+  <hr />
+
+  <!-- ── Why CLQ ── -->
+  <h2>Why CLQ?</h2>
+
+  <h3>Why not the official MCP TypeScript SDK?</h3>
+  <p>The official SDK is the right choice if you need full control over every protocol detail or you're building something non-standard. It's low-level by design. With it you manually wire the stdio transport, write your own input validation, format your own error responses, and handle the protocol handshake yourself. CLQ wraps all of that with Zod schemas, structured <code>CLQError</code>s, and a dev CLI — so you write tool logic instead of protocol glue. If you outgrow CLQ, the underlying MCP SDK is still there.</p>
+
+  <h3>Why not mcp-use or similar orchestration tools?</h3>
+  <p>mcp-use and similar projects are about connecting AI agents <em>to</em> MCP servers — the client side. They help you build an agent that calls existing tools. CLQ is about building the MCP server itself — the server side. These are different problems. If you're orchestrating an agent that calls tools someone else built, look at mcp-use. If you're writing the tools themselves, that's what CLQ is for. The two can coexist: build your server with CLQ, then connect to it with whatever agent orchestration layer you prefer.</p>
+
+  <hr />
+
+  <!-- ── Core API ── -->
+  <h2>Core API</h2>
+
+  <h3>defineTool</h3>
+  <p>Defines a named tool with Zod schemas for input and output, and an async handler. <strong>Both boundaries are validated</strong>: input is checked before the handler runs; output is checked before the result leaves the framework. A schema mismatch throws a structured <code>CLQError</code> — never a raw crash.</p>
+
+  <pre><code>const getWeather = defineTool({
+  name: "get_weather",
+  description: "Get current weather for a city.",  // required — agents read this
+  input: z.object({ city: z.string().describe("City name") }),
+  output: z.object({ temperature: z.number(), condition: z.string() }),
+  handler: async ({ input }) =&gt; {
+    const data = await fetchWeatherApi(input.city)
+    return { temperature: data.temp_c, condition: data.description }
+  },
+})</code></pre>
+
+  <p>The <code>output</code> schema is optional but recommended: it lets AI clients trust tool responses without re-validating them, which reduces token usage and tightens agent feedback loops. The <code>description</code> is mandatory — AI agents read it to decide when to call the tool, so a missing or vague description causes agents to call tools incorrectly or not at all. CLQ throws immediately if it's empty.</p>
+
+  <h3>createServer</h3>
+  <p>A chainable builder that collects tools (and optionally middleware), then starts the MCP stdio transport. Duplicate tool names throw at registration time, not at runtime.</p>
+
+  <pre><code>const server = createServer({ name: "my-server", version: "1.0.0" })
+server.tool(getWeather).tool(listCities)
+server.start()</code></pre>
+
+  <h3>defineConfig</h3>
+  <p>Declares required environment variables with types, descriptions, and a <code>secret</code> flag. Missing or mistyped vars throw at startup — never silently mid-request. The <code>secret</code> flag ensures that if the value leaks into an error message, only its shape is revealed, not its content.</p>
+
+  <pre><code>// clq.config.ts
+import { defineConfig } from "@clq-sh/core"
+
+export default defineConfig({
+  name: "my-server",
+  version: "1.0.0",
+  env: {
+    GITHUB_TOKEN: {
+      type: "string",
+      description: "GitHub personal access token",
+      secret: true,
+    },
+    MAX_RESULTS: {
+      type: "number",
+      description: "Maximum results to return per call",
+      default: 10,
+    },
+  },
+})</code></pre>
+
+  <hr />
+
+  <!-- ── Connect to Claude Desktop ── -->
+  <h2>Connect to Claude Desktop</h2>
+
+  <p>After <code>pnpm build</code>, add this to <code>claude_desktop_config.json</code>:</p>
+
+  <pre><code>{
+  "mcpServers": {
+    "my-server": {
+      "command": "node",
+      "args": ["&lt;absolute-path&gt;/my-server/dist/index.js"]
+    }
+  }
+}</code></pre>
+
+  <p>Restart Claude Desktop after editing the config. Your tools appear in Claude's tool list immediately.</p>
+
+  <hr />
+
+  <!-- ── Security note ── -->
+  <h2>Security &amp; Quality</h2>
+
+  <p>CLQ underwent a real security audit before the v0.2.0 release. Two confirmed vulnerabilities were found and fixed: a <strong>credential leak in <code>clq doctor</code></strong> and a <strong>redaction bypass in <code>clq inspect</code></strong>. A subsequent fix attempt introduced a regex regression that was caught and corrected. The full disclosed trail is on the <a href="security.html">Security page</a>. The suite passes <strong>211 tests</strong> across 18 test files.</p>
+
+</main>
+
+<footer>
+  <p>CLQ — MIT License — <a href="https://github.com/clq-sh/CLQ">github.com/clq-sh/CLQ</a></p>
+</footer>
+
+</body>
+</html>

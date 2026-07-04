@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLQ — Changelog</title>
+  <meta name="description" content="CLQ release history, pulled live from GitHub Releases." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="index.html">CLQ</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="cli.html">CLI</a>
+    <a href="security.html">Security</a>
+    <a href="changelog.html" class="active">Changelog</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/clq-sh/CLQ" class="github-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<main>
+
+  <h1>Changelog</h1>
+  <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:2rem;">
+    Pulled live from <a href="https://github.com/clq-sh/CLQ/releases">GitHub Releases</a>.
+    This page always reflects the current release state — no manual sync required.
+  </p>
+
+  <div id="releases-list">
+    <p class="loading" id="loading-msg">Loading releases…</p>
+  </div>
+
+</main>
+
+<footer>
+  <p>CLQ — MIT License — <a href="https://github.com/clq-sh/CLQ">github.com/clq-sh/CLQ</a></p>
+</footer>
+
+<!-- marked.js for markdown rendering (changelog release bodies) -->
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+
+<script>
+(async function loadReleases() {
+  const container = document.getElementById("releases-list")
+  const loadingMsg = document.getElementById("loading-msg")
+
+  // Session cache so repeated tab visits don't hammer the API
+  const CACHE_KEY = "clq-releases-v1"
+  const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+  let releases = null
+
+  try {
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    if (cached) {
+      const { ts, data } = JSON.parse(cached)
+      if (Date.now() - ts < CACHE_TTL) {
+        releases = data
+      }
+    }
+  } catch (_) { /* sessionStorage unavailable or corrupt */ }
+
+  if (!releases) {
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/clq-sh/CLQ/releases",
+        { headers: { Accept: "application/vnd.github+json" } }
+      )
+
+      if (res.status === 403 || res.status === 429) {
+        // Rate limited
+        const reset = res.headers.get("X-RateLimit-Reset")
+        const resetTime = reset
+          ? new Date(parseInt(reset, 10) * 1000).toLocaleTimeString()
+          : "a few minutes"
+        showError(
+          `GitHub API rate limit reached. Try again after ${resetTime}.`,
+          true
+        )
+        return
+      }
+
+      if (!res.ok) {
+        showError(`GitHub API returned ${res.status}. Try again later.`, true)
+        return
+      }
+
+      releases = await res.json()
+
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: releases }))
+      } catch (_) { /* ignore storage failure */ }
+
+    } catch (err) {
+      showError(
+        "Could not reach GitHub. Check your connection or view releases directly on GitHub.",
+        true
+      )
+      return
+    }
+  }
+
+  if (!releases || releases.length === 0) {
+    loadingMsg.textContent = "No releases published yet."
+    return
+  }
+
+  loadingMsg.remove()
+
+  for (const release of releases) {
+    const div = document.createElement("div")
+    div.className = "release"
+
+    const date = new Date(release.published_at || release.created_at)
+    const dateStr = date.toLocaleDateString("en-US", {
+      year: "numeric", month: "long", day: "numeric"
+    })
+
+    const bodyHtml = release.body
+      ? marked.parse(release.body)
+      : "<p style=\"color:var(--text-muted)\"><em>No release notes.</em></p>"
+
+    div.innerHTML = `
+      <div class="release-header">
+        <a class="release-tag" href="${escHtml(release.html_url)}" target="_blank" rel="noopener">
+          ${escHtml(release.tag_name)}
+        </a>
+        ${release.prerelease ? '<span class="badge badge-medium">pre-release</span>' : ""}
+        <span class="release-date">${escHtml(dateStr)}</span>
+      </div>
+      <div class="release-body">${bodyHtml}</div>
+    `
+    container.appendChild(div)
+  }
+
+  function showError(message, showLink) {
+    loadingMsg.innerHTML = showLink
+      ? `${escHtml(message)} &nbsp;<a href="https://github.com/clq-sh/CLQ/releases">View on GitHub →</a>`
+      : escHtml(message)
+    loadingMsg.style.color = "var(--text-muted)"
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+  }
+})()
+</script>
+
+</body>
+</html>

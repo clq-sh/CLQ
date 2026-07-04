@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLQ — Security &amp; Audit</title>
+  <meta name="description" content="Full security audit trail for CLQ v0.2.0: what was found, what broke on the first fix attempt, what's still a known limitation and why." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="index.html">CLQ</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="cli.html">CLI</a>
+    <a href="security.html" class="active">Security</a>
+    <a href="changelog.html">Changelog</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/clq-sh/CLQ" class="github-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<main>
+
+  <h1>Security &amp; Audit</h1>
+
+  <p>Before the v0.2.0 public release, CLQ underwent a structured security and quality audit covering every command, the inspector auth model, the redaction layer, and the middleware execution path. This page is the honest account of what was found, what was fixed, what broke during the fix, and what was deliberately left open. The full timestamped record — original reports, fix sessions, and the final verification pass — lives in <a href="https://github.com/clq-sh/CLQ/tree/main/qa-report"><code>qa-report/</code> on GitHub</a>.</p>
+
+  <div class="callout info">
+    <p><strong>Audit scope:</strong> <code>@clq-sh/core@0.1.4</code> and <code>@clq-sh/cli@0.1.4</code>, tested on Windows 10 Pro / Node.js v18.20.6. 128 tests passing at audit start; 211 passing after all fixes.</p>
+  </div>
+
+  <hr />
+
+  <h2>What was found and fixed</h2>
+
+  <!-- Finding 1 -->
+  <div class="finding" id="finding-1">
+    <div class="finding-header">
+      <span class="badge badge-medium">Medium</span>
+      <span class="badge badge-fixed">Fixed in v0.2.0</span>
+      <strong>Finding 1 — Credential leak in <code>clq doctor</code></strong>
+    </div>
+    <div class="finding-body">
+      <p><strong>What happened:</strong> When an environment variable is declared as <code>type: "number"</code> in <code>clq.config.ts</code> but the actual runtime value is non-numeric — for example, an API key accidentally routed to a port variable — <code>loadConfig()</code> would embed the raw value directly in the error message. <code>clq doctor</code> then printed that error to stdout.</p>
+
+      <p><strong>Concrete reproduction:</strong></p>
+      <div class="terminal">
+        <div><span class="prompt">$ </span><span class="cmd">SERVICE_PORT=sk-REAL-SECRET-12345678 clq doctor</span></div>
+        <div>Checking project configuration…</div>
+        <div>  <span class="err">✗</span> Config check failed: Required environment variable 'SERVICE_PORT' is not set.</div>
+        <div>    The port number for the service.</div>
+        <div>    <span class="err">(expected a number, got "sk-REAL-SECRET-12345678")</span></div>
+      </div>
+
+      <p><strong>Root cause:</strong> One line in <code>config.ts</code>:</p>
+      <pre><code>throw errors.missingEnvVar(
+  key,
+  `${decl.description} (expected a number, got "${raw}")`, // raw = process.env[key]
+)</code></pre>
+      <p>The <code>secret: true</code> flag on the declaration did nothing — no code read it before this path.</p>
+
+      <p><strong>Impact:</strong> Any CI/CD pipeline that logs <code>clq doctor</code> output — common when it's used as a health check before deployment — would capture the literal secret value in cleartext log storage.</p>
+
+      <p><strong>Fix:</strong> Replaced the raw value interpolation with a structural description. For non-secret vars: <code>"a non-numeric string of length N"</code>. For <code>secret: true</code> vars: <code>"a non-numeric value"</code> — no content, no length, nothing reconstructable. A regression test now asserts that the full fake secret is not a substring of <code>JSON.stringify(output)</code> anywhere in the process's stdout.</p>
+    </div>
+  </div>
+
+  <!-- Finding 2 -->
+  <div class="finding" id="finding-2">
+    <div class="finding-header">
+      <span class="badge badge-low">Low</span>
+      <span class="badge badge-fixed">Fixed in v0.2.0</span>
+      <strong>Finding 2 — Redaction bypass in <code>clq inspect</code></strong>
+    </div>
+    <div class="finding-body">
+      <p><strong>What happened:</strong> The inspector's response sanitizer (<code>redactSecrets()</code>) only matched four key-name patterns: <code>secret</code>, <code>token</code>, <code>password</code>, and <code>api_key</code>. A tool handler returning data under any other secret-looking key name would leak the value through <code>/api/call</code> and <code>/api/logs</code> responses. The following keys were confirmed to pass through unredacted:</p>
+
+      <table>
+        <tr><th>Key name</th><th>Typical content</th><th>Redacted?</th></tr>
+        <tr><td><code>authorization</code></td><td><code>Bearer sk-...</code></td><td><span class="err">✗ NO</span></td></tr>
+        <tr><td><code>credential</code> / <code>credentials</code></td><td>secret value</td><td><span class="err">✗ NO</span></td></tr>
+        <tr><td><code>private_key</code> / <code>privateKey</code></td><td>PEM key</td><td><span class="err">✗ NO</span></td></tr>
+        <tr><td><code>access_key</code> / <code>accessKey</code></td><td>AWS/cloud key</td><td><span class="err">✗ NO</span></td></tr>
+        <tr><td><code>signing_key</code></td><td>HMAC key</td><td><span class="err">✗ NO</span></td></tr>
+        <tr><td><code>bearer</code></td><td>Bearer token value</td><td><span class="err">✗ NO</span></td></tr>
+        <tr><td><code>jwt</code></td><td>JWT string</td><td><span class="err">✗ NO</span></td></tr>
+        <tr><td><code>passphrase</code></td><td>passphrase</td><td><span class="err">✗ NO</span></td></tr>
+      </table>
+
+      <p><strong>Fix:</strong> Expanded <code>SECRET_TERMS</code> to 16 patterns covering the most common real-world naming conventions. Every response from the inspector — tool lists, call results, log entries — is passed through <code>redactSecrets()</code> at the boundary regardless of what the handler returned.</p>
+
+      <p><strong>What this fix later broke:</strong> See the <a href="#regression">FIXD regression section below</a>.</p>
+    </div>
+  </div>
+
+  <!-- FIX2 -->
+  <div class="finding" id="fix2">
+    <div class="finding-header">
+      <span class="badge badge-medium">Correctness</span>
+      <span class="badge badge-fixed">Fixed in v0.2.0</span>
+      <strong>FIX2 — Middleware after-hook errors discarding successful tool results</strong>
+    </div>
+    <div class="finding-body">
+      <p><strong>What happened:</strong> When a tool's <code>after</code> middleware hook threw an error, the original successful result of the tool call was lost. The MCP client received a failure response even though the tool had completed successfully.</p>
+
+      <pre><code>// Before fix — if after() throws, result is lost:
+for (const mw of [...middleware].reverse()) {
+  await mw.after?.(args.ctx, result)  // rejection propagates up
+}
+return result</code></pre>
+
+      <p><strong>Fix:</strong> <code>after</code>-hook errors are now caught individually. The error is logged via <code>console.error</code>, the remaining <code>after</code> hooks still run, and the tool's original result is always returned — a broken after-hook can never make a succeeded tool appear to have failed to the MCP client.</p>
+
+      <pre><code>// After fix:
+for (const mw of [...middleware].reverse()) {
+  try {
+    await mw.after?.(args.ctx, result)
+  } catch (err) {
+    console.error(err)  // logged, not swallowed
+  }
+}
+return result  // always returned</code></pre>
+
+      <p><strong>Side effect (cosmetic):</strong> Two tests that exercise this behavior emit <code>Error: after-exploded</code> stack traces to stderr on every test run, because they don't mock <code>console.error</code>. The tests pass; the stderr output is noise. This is a documented, permanent cosmetic issue.</p>
+    </div>
+  </div>
+
+  <hr />
+
+  <!-- Regression narrative -->
+  <h2 id="regression">The fix that broke things: the FIXD regex regression</h2>
+
+  <p>After expanding <code>SECRET_TERMS</code> to 16 patterns (Finding 2 fix), a concern emerged: bare substring matching would over-redact innocent fields. The key <code>primaryKey</code> contains <code>key</code> as a suffix and would be redacted even though it's a database key, not a credential. So a follow-up pass (FIXD) added word-boundary anchors to the regex.</p>
+
+  <h3>What FIXD did (and why it seemed reasonable)</h3>
+
+  <pre><code>// Before FIXD — pure substring:
+const SECRET_KEY_PATTERN = new RegExp(SECRET_TERMS.join("|"), "i")
+
+// After FIXD — word boundaries:
+const SECRET_KEY_PATTERN = new RegExp(
+  SECRET_TERMS.map((t) =&gt; `\\b(?:${t})\\b`).join("|"),
+  "i",
+)</code></pre>
+
+  <p>This correctly stopped redacting <code>primaryKey</code>, <code>foreignKey</code>, and similar false positives. 37 unit tests were added to cover the matrix. FIXD shipped.</p>
+
+  <h3>The regression FIXD introduced</h3>
+
+  <p>In JavaScript regex, <code>\b</code> fires between a <code>\w</code> character (<code>[a-zA-Z0-9_]</code>) and a <code>\W</code> character, or at a string edge. The critical flaw: <strong>both lowercase and uppercase letters are <code>\w</code></strong>. There is no <code>\b</code> between the <code>r</code> and <code>A</code> in <code>userApiKey</code> — both are word characters. Word boundaries do not fire at camelCase transitions.</p>
+
+  <p>This meant real secret keys started passing through unredacted:</p>
+
+  <table>
+    <tr><th>Key</th><th>Expected</th><th>Actual (FIXD)</th></tr>
+    <tr><td><code>apiKey</code></td><td><span class="err">REDACTED</span></td><td><span class="ok">passed through</span></td></tr>
+    <tr><td><code>privateKey</code></td><td><span class="err">REDACTED</span></td><td><span class="ok">passed through</span></td></tr>
+    <tr><td><code>userApiKey</code></td><td><span class="err">REDACTED</span></td><td><span class="ok">passed through</span></td></tr>
+    <tr><td><code>clientAccessToken</code></td><td><span class="err">REDACTED</span></td><td><span class="ok">passed through</span></td></tr>
+  </table>
+
+  <p>The regression was caught because the test suite was comprehensive enough to include these cases. The 37 new tests from FIXD caught the false-positive problem; the existing tests caught the regression when they failed.</p>
+
+  <h3>How FIXD2 fixed it</h3>
+
+  <p>The regex approach was abandoned in favor of a structural key-splitting strategy:</p>
+
+  <ol>
+    <li><strong>Split</strong> the key into lowercase word segments by handling camelCase transitions, underscores, and hyphens: <code>userApiKey → ["user", "api", "key"]</code></li>
+    <li><strong>Match</strong> against two independent sets with explicit positional rules:
+      <ul>
+        <li><code>SINGLE_SECRET_WORDS</code>: matches when the word is the entire key alone, or appears at any non-leading position (index &gt; 0) — so <code>token</code> matches <code>requestToken</code> (non-leading) but not <code>tokenCount</code> (leading in a multi-word key)</li>
+        <li><code>COMPOUND_SECRET_TERMS</code>: two-word pairs that match when they're the entire key, or the trailing suffix of a longer key — so <code>api/key</code> matches <code>apiKey</code> and <code>userApiKey</code> but not <code>apiVersion</code></li>
+      </ul>
+    </li>
+  </ol>
+
+  <p>A subsequent verification pass (FIXD3) ran all 27 known edge cases through the production implementation before touching any source file, confirming the logic was correct. No code change was needed in FIXD3 — the implementation was already right.</p>
+
+  <hr />
+
+  <h2>What's not fixed — and why</h2>
+
+  <!-- Middleware timeout -->
+  <div class="finding" id="timeout-gap">
+    <div class="finding-header">
+      <span class="badge badge-open">Open</span>
+      <span class="badge badge-low">Low — by design</span>
+      <strong>Middleware timeout gap — no hung-hook protection</strong>
+    </div>
+    <div class="finding-body">
+      <p>If a middleware <code>before</code> or <code>after</code> hook never resolves — for example, it hangs on a network call with no timeout, or deadlocks on a resource — the tool call never returns a result or error. The MCP client will eventually time out on its side, but on the server side the promise chain is stuck. Because the stdio MCP transport is sequential in practice, a single hung hook can block all subsequent tool calls, making the server permanently unresponsive for the session.</p>
+
+      <p><strong>Why this wasn't fixed:</strong> The right solution is to add an <code>AbortSignal</code> to <code>CLQContext</code> that the framework sets with a per-call deadline. Middleware hooks that respect the signal can abort early; hooks that don't will be abandoned when the signal fires. This is a public API change — adding a field to <code>CLQContext</code> — and requires a proper design pass rather than a one-liner patch. Shipping a half-correct timeout (e.g., <code>Promise.race</code> that abandons the hook but doesn't cancel it) would create a worse situation: the hook keeps running in the background, holding resources, while the client receives a timeout error.</p>
+
+      <p><strong>Mitigation in the meantime:</strong> Middleware hooks that make any I/O call should implement their own timeouts using <code>AbortController</code> or <code>Promise.race</code> with a fallback. This is standard practice for I/O code; CLQ just doesn't enforce it yet.</p>
+    </div>
+  </div>
+
+  <!-- Inspector reload -->
+  <div class="finding" id="inspector-reload">
+    <div class="finding-header">
+      <span class="badge badge-open">Open</span>
+      <span class="badge badge-low">UX — Medium impact</span>
+      <strong>Inspector page reload makes the UI permanently unusable</strong>
+    </div>
+    <div class="finding-body">
+      <p>The inspector reads its session token from the URL on load, then immediately strips it from the address bar using <code>history.replaceState</code> — a correct security behavior that prevents the token from appearing in browser history, referrers, or server logs. But a page reload sends no token, gets a 401, and shows <code>"failed to load: HTTP 401"</code> with no explanation. There is no recovery from this state; the user must close the tab and re-open the original URL from the terminal.</p>
+
+      <p><strong>Why the security behavior is correct:</strong> The token-stripping is intentional and right. A token in the URL bar is visible in shared screens, browser extensions, browser sync, and referrer headers. The UX problem is the lack of a helpful error state — the page doesn't explain what happened or how to recover. This is a missing error message, not a broken security model.</p>
+
+      <p><strong>Why it wasn't fixed in this pass:</strong> The audit pass was read-only (no source modifications). A correct fix would add a user-facing error state that says something like: "Token expired from URL — please re-open the link printed by <code>clq inspect</code>." Tracked for a future release.</p>
+    </div>
+  </div>
+
+  <!-- Redaction false positives -->
+  <div class="finding" id="false-positives">
+    <div class="finding-header">
+      <span class="badge badge-open">Open</span>
+      <span class="badge badge-low">Functional — design tradeoff</span>
+      <strong>Redaction false positives on <code>cookie</code> and similar substrings</strong>
+    </div>
+    <div class="finding-body">
+      <p>The <code>SECRET_TERMS</code> list includes <code>cookie</code> and <code>token</code>, which were added to catch HTTP <code>Cookie</code> headers and session tokens — legitimate targets. But because the matching is substring-based, fields like <code>cookieCount</code>, <code>acceptedCookies</code>, and <code>tokenCount</code> are also redacted. The impact is a type mismatch: a numeric value like <code>{ tokenCount: 1000 }</code> becomes <code>{ tokenCount: "[REDACTED]" }</code> — the field is a string where a number was expected, which can break consumers.</p>
+
+      <p>Confirmed false-positive cases: <code>cookieCount</code>, <code>acceptedCookies</code>, <code>cookieBannerVisible</code>, <code>tokenCount</code>, <code>jwtAlgorithm</code>, <code>credentialType</code>.</p>
+
+      <p><strong>Why this is a tradeoff, not a bug:</strong> The comment in <code>redact.ts</code> explicitly says "Matched as substrings" — this was chosen deliberately for maximum coverage. The alternative is a more precise matching rule that would require more context to get right. The current behavior prioritizes never leaking a real secret over never over-redacting a non-secret field. This tradeoff is explicit and documented, not an accident. Tools that return non-secret fields with these names should rename them to avoid ambiguity.</p>
+    </div>
+  </div>
+
+  <hr />
+
+  <h2>Full audit record</h2>
+
+  <p>The complete timestamped record — original reports, each fix session, and the final verification pass — is in <a href="https://github.com/clq-sh/CLQ/tree/main/qa-report"><code>qa-report/</code></a> on GitHub. The index file (<a href="https://github.com/clq-sh/CLQ/blob/main/qa-report/README.md"><code>qa-report/README.md</code></a>) lists every file in chronological order with a one-line description. Each file is the unedited output of the session that produced it — nothing has been cleaned up retroactively.</p>
+
+</main>
+
+<footer>
+  <p>CLQ — MIT License — <a href="https://github.com/clq-sh/CLQ">github.com/clq-sh/CLQ</a></p>
+</footer>
+
+</body>
+</html>

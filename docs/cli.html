@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLQ CLI Reference</title>
+  <meta name="description" content="Full reference for every CLQ command: clq init, clq add, clq dev, clq inspect, clq doctor — with example output." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="index.html">CLQ</a>
+  <div class="nav-links">
+    <a href="index.html">Home</a>
+    <a href="cli.html" class="active">CLI</a>
+    <a href="security.html">Security</a>
+    <a href="changelog.html">Changelog</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/clq-sh/CLQ" class="github-link">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<main>
+
+  <h1>CLI Reference</h1>
+  <p class="tagline" style="color:var(--text-muted);font-size:1rem;margin-bottom:2rem;">Every <code>clq</code> command, with real example output.</p>
+
+  <!-- ── clq init ── -->
+  <div class="cmd-card" id="init">
+    <h3>clq init</h3>
+    <div class="syntax">clq init [project-name]</div>
+    <p>Scaffolds a new MCP server project. If you omit the project name, CLQ prompts you for one interactively. The name must be lowercase alphanumeric with hyphens (<code>^[a-z0-9][a-z0-9-]*$</code>) — this is validated before any files are written.</p>
+    <p>CLQ writes the project into a new subdirectory of your current directory and refuses to write outside it — path traversal attempts (e.g. <code>../../escape</code>) are rejected at the name-validation step before any filesystem access.</p>
+
+    <div class="terminal">
+      <div><span class="prompt">$ </span><span class="cmd">clq init weather-server</span></div>
+      <div><span class="ok">✔</span> Scaffolded weather-server</div>
+      <div>&nbsp;</div>
+      <div>Next steps:</div>
+      <div>  cd weather-server</div>
+      <div>  pnpm install &amp;&amp; pnpm build</div>
+      <div>  clq inspect</div>
+    </div>
+
+    <h4>What gets created</h4>
+    <div class="terminal">
+      <div>weather-server/</div>
+      <div>  src/</div>
+      <div>    index.ts          <span class="dim">← createServer + tool registration</span></div>
+      <div>    tools/</div>
+      <div>      example-tool.ts <span class="dim">← starter tool with real description</span></div>
+      <div>  clq.config.ts       <span class="dim">← env var declarations</span></div>
+      <div>  tsconfig.json</div>
+      <div>  package.json        <span class="dim">← @clq-sh/core pinned to current version</span></div>
+      <div>  .gitignore</div>
+      <div>  .env.example</div>
+    </div>
+
+    <p>The generated template builds and runs without any edits. The starter tool file has a real, non-empty description so it satisfies CLQ's mandatory-description check immediately — the project compiles before you've written a word.</p>
+
+    <h4>Flags</h4>
+    <table>
+      <tr><th>Flag</th><th>Effect</th></tr>
+      <tr><td><code>--force</code></td><td>Overwrite an existing non-empty directory. Without this flag, CLQ exits non-zero if the target directory already exists and is not empty.</td></tr>
+    </table>
+  </div>
+
+  <!-- ── clq add ── -->
+  <div class="cmd-card" id="add">
+    <h3>clq add</h3>
+    <div class="syntax">clq add &lt;tool-name&gt;</div>
+    <p>Adds a new tool file to the current project's <code>src/tools/</code> directory. The tool name follows the same slug rules as the project name. CLQ walks up from your current directory looking for <code>clq.config.ts</code> as the project marker — you can run this from any subdirectory inside a project. The walk is bounded to 10 levels, so a stray invocation outside a project fails fast with a clear error instead of scanning the disk.</p>
+
+    <div class="terminal">
+      <div><span class="prompt">$ </span><span class="cmd">clq add search-repos</span></div>
+      <div><span class="ok">✔</span> Created src/tools/search-repos.ts</div>
+    </div>
+
+    <h4>Generated file</h4>
+    <pre><code>import { defineTool } from "@clq-sh/core"
+import { z } from "zod"
+
+export const searchRepos = defineTool({
+  name: "search_repos",
+  description: "TODO: describe what search-repos does and when an agent should call it.",
+  input: z.object({
+    query: z.string().describe("Search query"),
+  }),
+  handler: async ({ input, ctx }) =&gt; {
+    // TODO: implement
+    return {}
+  },
+})</code></pre>
+
+    <p>The description placeholder is intentionally a real sentence, not a comment — it satisfies CLQ's mandatory-description check so the project builds immediately. Replace it before shipping.</p>
+  </div>
+
+  <!-- ── clq dev ── -->
+  <div class="cmd-card" id="dev">
+    <h3>clq dev</h3>
+    <div class="syntax">clq dev</div>
+    <p>Starts a hot-reload dev server. CLQ delegates file watching to <code>tsx watch</code>, which handles TypeScript-aware watching and incremental re-execution. When a source file changes, the server restarts automatically.</p>
+
+    <div class="terminal">
+      <div><span class="prompt">$ </span><span class="cmd">clq dev</span></div>
+      <div><span class="ok">✔</span> Watching src/ — MCP server running</div>
+      <div><span class="dim">  Waiting for file changes… (Ctrl+C to stop)</span></div>
+      <div>&nbsp;</div>
+      <div><span class="dim">[change detected]</span></div>
+      <div><span class="ok">↻</span> Restarting…</div>
+      <div><span class="ok">✔</span> Ready</div>
+    </div>
+
+    <p><strong>Shutdown behavior:</strong> On Ctrl+C, CLQ sends a signal to the <code>tsx</code> child process and waits for it to exit before the parent process exits. This is deliberate — a dev CLI that exits immediately on Ctrl+C leaves the watcher (and the server it spawned) running as orphaned processes that hold ports and file locks. CLQ waits for the full process tree to exit before returning.</p>
+
+    <div class="callout info">
+      <p><strong>MCP client connection during dev:</strong> <code>clq dev</code> runs your server on stdio, the same transport Claude Desktop uses. You can connect Claude Desktop to a <code>clq dev</code> instance for live development, but you'll need to reconnect after each restart.</p>
+    </div>
+  </div>
+
+  <!-- ── clq inspect ── -->
+  <div class="cmd-card" id="inspect">
+    <h3>clq inspect</h3>
+    <div class="syntax">clq inspect</div>
+    <p>Launches a local web inspector: a browser UI where you can call your tools, inspect responses, and review the last 200 call log entries. The inspector uses a two-process design — the inspector server spawns your project's <code>src/index.ts</code> as a child process, communicates with it over stdio, and proxies tool calls through.</p>
+
+    <div class="terminal">
+      <div><span class="prompt">$ </span><span class="cmd">clq inspect</span></div>
+      <div><span class="ok">✔</span> Inspector running</div>
+      <div>&nbsp;</div>
+      <div>  Open this URL in your browser:</div>
+      <div>  <span class="ok">http://127.0.0.1:7317/?token=a3f8…</span></div>
+      <div>&nbsp;</div>
+      <div>  This token will not be printed again. Keep this URL private.</div>
+      <div>  (Ctrl+C to stop)</div>
+    </div>
+
+    <h4>Security model</h4>
+    <p>The inspector binds exclusively to <code>127.0.0.1</code> — never <code>0.0.0.0</code>. Every request is gated by two independent checks in order: the <code>Origin</code> header is validated first (a mismatched Origin returns 403 before the server reveals anything about the token), then the <code>x-clq-token</code> header is checked (a missing or wrong token returns 401). A browser tab on a malicious page cannot forge the <code>Origin</code> header and is blocked outright.</p>
+    <p>All responses — tool lists, call results, and log entries — are passed through <code>redactSecrets()</code> before leaving the server. Any response field whose key name contains a known secret pattern (<code>token</code>, <code>password</code>, <code>api_key</code>, <code>authorization</code>, <code>bearer</code>, <code>jwt</code>, <code>private_key</code>, and 9 more) is replaced with <code>"[REDACTED]"</code> regardless of where the data came from.</p>
+
+    <div class="callout warn">
+      <p><strong>Do not reload the browser tab.</strong> The token is read from the URL on load and immediately stripped from the address bar (so it doesn't appear in browser history or referrers). A page reload sends no token and receives a 401 with no recovery path. If this happens, close the tab and re-open the original URL from your terminal.</p>
+    </div>
+
+    <div class="callout info">
+      <p><strong>Tool list is static per session.</strong> The inspector reads your tool definitions once at startup. Adding a new tool to <code>src/index.ts</code> while the inspector is running requires a full <code>clq inspect</code> restart to appear.</p>
+    </div>
+
+    <h4>Port behavior</h4>
+    <p>CLQ defaults to port 7317. If that port is busy, it retries the next 5 incrementing ports (7318–7322) before failing with a clear error.</p>
+  </div>
+
+  <!-- ── clq doctor ── -->
+  <div class="cmd-card" id="doctor">
+    <h3>clq doctor</h3>
+    <div class="syntax">clq doctor</div>
+    <p>Runs three independent health checks on the current project and exits non-zero if any fail:</p>
+    <ol>
+      <li><strong>Config validation</strong> — loads <code>clq.config.ts</code> in a short-lived <code>tsx</code> subprocess, checks all declared env vars are present and the correct type. The config subprocess reports only <code>{ ok, message, fix }</code> — the actual env var values never cross back to the CLI process.</li>
+      <li><strong>Dependency check</strong> — confirms <code>node_modules</code> is installed.</li>
+      <li><strong>Secret scan</strong> — scans source files for hardcoded secrets using hand-rolled regex patterns. Reports the file, line number, and a masked preview of the match (first 3 + last 2 characters; short values are fully starred). The real matched value is never stored, returned, or logged — the masking happens at the innermost scope and the raw value is immediately unreferenced.</li>
+    </ol>
+
+    <div class="terminal">
+      <div><span class="prompt">$ </span><span class="cmd">clq doctor</span></div>
+      <div>&nbsp;</div>
+      <div>Checking project configuration…</div>
+      <div>  <span class="ok">✔</span> Config valid — GITHUB_TOKEN set, PORT=3000</div>
+      <div>&nbsp;</div>
+      <div>Checking dependencies…</div>
+      <div>  <span class="ok">✔</span> node_modules present</div>
+      <div>&nbsp;</div>
+      <div>Scanning for hardcoded secrets…</div>
+      <div>  <span class="ok">✔</span> No secrets detected</div>
+      <div>&nbsp;</div>
+      <div><span class="ok">✔</span> All checks passed</div>
+    </div>
+
+    <div class="terminal">
+      <div><span class="prompt">$ </span><span class="cmd">GITHUB_TOKEN="" clq doctor</span></div>
+      <div>&nbsp;</div>
+      <div>Checking project configuration…</div>
+      <div>  <span class="err">✗</span> Config check failed: Required environment variable 'GITHUB_TOKEN' is not set.</div>
+      <div>    GitHub personal access token</div>
+      <div>    Fix: Set GITHUB_TOKEN in your .env file or environment before starting the server.</div>
+      <div>&nbsp;</div>
+      <div><span class="err">✗</span> 1 check failed</div>
+    </div>
+
+    <div class="callout ok">
+      <p><strong>No network calls.</strong> Every check is local: filesystem reads for the secret scan and dependency check, and an in-process config validation via a local <code>tsx</code> subprocess. There is no telemetry, no "phone home" step, no remote secret-verification service. A security tool that scans for credentials must never be the thing that exfiltrates them.</p>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <p>CLQ — MIT License — <a href="https://github.com/clq-sh/CLQ">github.com/clq-sh/CLQ</a></p>
+</footer>
+
+</body>
+</html>

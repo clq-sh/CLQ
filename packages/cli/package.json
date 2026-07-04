@@ -5,16 +5,16 @@
   "bin": {
     "clq": "./dist/index.js"
   },
-  "files": ["dist", "scripts"],
+  "files": ["dist", "scripts", "README.md"],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com",
+    "url": "git+https://github.com/clq-sh/CLQ.git",
     "directory": "packages/cli"
   },
   "bugs": {
-    "url": "https://github.com"
+    "url": "https://github.com/clq-sh/CLQ/issues"
   },
-  "homepage": "https://github.com",
+  "homepage": "https://github.com/clq-sh/CLQ#readme",
   "scripts": {
     "build": "tsup && node scripts/copy-assets.mjs",
     "test": "vitest run"
