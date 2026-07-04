@@ -1,6 +1,6 @@
 # CLQ — build MCP servers without reading the spec.
 
-[![npm](https://img.shields.io/npm/v/@clq-sh/cli?color=0f0f0f&label=clq&style=flat-square)](https://www.npmjs.com/package/@clq-sh/cli) [![license](https://img.shields.io/github/license/m1chzdk/CLQ?color=0f0f0f&style=flat-square)](LICENSE) [![MCP](https://img.shields.io/badge/MCP-ready-0f0f0f?style=flat-square)](https://modelcontextprotocol.io)
+[![npm](https://img.shields.io/npm/v/@clq-sh/cli?color=0f0f0f&label=clq&style=flat-square)](https://www.npmjs.com/package/@clq-sh/cli) [![license](https://img.shields.io/github/license/clq-sh/CLQ?color=0f0f0f&style=flat-square)](LICENSE) [![MCP](https://img.shields.io/badge/MCP-ready-0f0f0f?style=flat-square)](https://modelcontextprotocol.io)
 
 ```typescript
 import { createServer, defineTool } from "@clq-sh/core"
