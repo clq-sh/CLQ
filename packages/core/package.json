@@ -8,15 +8,30 @@
   "exports": {
     ".": {
       "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./inspect": {
-      "import": { "types": "./dist/inspect.d.ts", "default": "./dist/inspect.js" },
-      "require": { "types": "./dist/inspect.d.cts", "default": "./dist/inspect.cjs" }
+      "import": {
+        "types": "./dist/inspect.d.ts",
+        "default": "./dist/inspect.js"
+      },
+      "require": {
+        "types": "./dist/inspect.d.cts",
+        "default": "./dist/inspect.cjs"
+      }
     },
     "./config": {
-      "import": { "types": "./dist/config.d.ts", "default": "./dist/config.js" },
-      "require": { "types": "./dist/config.d.cts", "default": "./dist/config.cjs" }
+      "import": {
+        "types": "./dist/config.d.ts",
+        "default": "./dist/config.js"
+      },
+      "require": {
+        "types": "./dist/config.d.cts",
+        "default": "./dist/config.cjs"
+      }
     }
   },
   "files": [
